@@ -14,7 +14,7 @@ router = APIRouter()
 def create_context(
     context_in: ContextCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_owner)
+    current_user: User = Depends(get_current_user)
 ):
     db_context = Context(
         owner_id=current_user.id,
