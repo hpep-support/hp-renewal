@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <main className="flex-1 flex flex-col relative overflow-hidden">
@@ -23,12 +25,12 @@ export default function Home() {
         </p>
         
         <div className="flex flex-col sm:flex-row gap-4 items-center">
-          <button className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold transition-all shadow-[0_0_40px_-10px_rgba(79,70,229,0.5)] hover:shadow-[0_0_60px_-15px_rgba(79,70,229,0.7)] hover:-translate-y-0.5 active:translate-y-0">
+          <Link href="/login" className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold transition-all shadow-[0_0_40px_-10px_rgba(79,70,229,0.5)] hover:shadow-[0_0_60px_-15px_rgba(79,70,229,0.7)] hover:-translate-y-0.5 active:translate-y-0">
             Start Recording
-          </button>
-          <button className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-semibold transition-all border border-slate-700 hover:border-slate-600">
+          </Link>
+          <Link href="/dashboard" className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-semibold transition-all border border-slate-700 hover:border-slate-600">
             View Dashboard
-          </button>
+          </Link>
         </div>
 
         {/* Feature Preview Cards */}
