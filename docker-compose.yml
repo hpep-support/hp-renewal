@@ -1,0 +1,98 @@
+version: "3.9"
+
+services:
+  # ─── PostgreSQL (メインDB) ─────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: dao_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-dao_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dao_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-dao_db}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dao_user} -d ${POSTGRES_DB:-dao_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Postiz (マルチSNS配信 OSS) ──────────────────────────────────
+  postiz-db:
+    image: postgres:16-alpine
+    container_name: postiz_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postiz_user
+      POSTGRES_PASSWORD: postiz_pass
+      POSTGRES_DB: postiz_db
+    volumes:
+      - postiz_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postiz_user -d postiz_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postiz-redis:
+    image: redis:7-alpine
+    container_name: postiz_redis
+    restart: unless-stopped
+    volumes:
+      - postiz_redis_data:/data
+
+  postiz:
+    image: ghcr.io/gitroomhq/postiz-app:latest
+    container_name: postiz_app
+    restart: unless-stopped
+    depends_on:
+      postiz-db:
+        condition: service_healthy
+      postiz-redis:
+        condition: service_started
+    environment:
+      MAIN_URL: "http://localhost:5000"
+      FRONTEND_URL: "http://localhost:5000"
+      NEXT_PUBLIC_BACKEND_URL: "http://localhost:5000/api"
+      JWT_SECRET: ${POSTIZ_JWT_SECRET:-postiz-secret-change-in-prod}
+      DATABASE_URL: "postgresql://postiz_user:postiz_pass@postiz-db:5432/postiz_db"
+      REDIS_URL: "redis://postiz-redis:6379"
+      BACKEND_INTERNAL_URL: "http://localhost:3000"
+      IS_GENERAL: "true"
+      STORAGE_PROVIDER: "local"
+      UPLOAD_DIRECTORY: "/uploads"
+      NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY: "/uploads"
+      NX_ADD_PLUGINS: "false"
+    ports:
+      - "5000:5000"
+    volumes:
+      - postiz_uploads:/uploads
+
+  # ─── FastAPI バックエンド ─────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dao_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-dao_user}:${POSTGRES_PASSWORD:-dao_pass}@db:5432/${POSTGRES_DB:-dao_db}"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  pg_data:
+  postiz_pg_data:
+  postiz_redis_data:
+  postiz_uploads:
