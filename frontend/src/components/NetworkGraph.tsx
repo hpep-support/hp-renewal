@@ -197,6 +197,55 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName }:
     }
   }, [onNodeSelect]);
 
+  const onRenderFramePost = useCallback((ctx: any, globalScale: number) => {
+    if (!activeNodeName) return;
+    const targetNode = graphData.nodes.find(n => n.name === activeNodeName);
+    if (!targetNode || targetNode.x === undefined || targetNode.y === undefined) return;
+
+    // Find snippet
+    const relatedCtx = contexts.find(c => 
+      c.body.includes(activeNodeName) || 
+      (c.extracted_entities && c.extracted_entities.includes(activeNodeName))
+    );
+    
+    if (relatedCtx) {
+      // extract snippet
+      const idx = relatedCtx.body.indexOf(activeNodeName);
+      let snippet = relatedCtx.body;
+      if (idx !== -1) {
+         const start = Math.max(0, idx - 15);
+         const end = Math.min(relatedCtx.body.length, idx + activeNodeName.length + 20);
+         snippet = (start > 0 ? "..." : "") + relatedCtx.body.substring(start, end).replace(/\n/g, ' ') + "...";
+      } else {
+         snippet = snippet.substring(0, 30).replace(/\n/g, ' ') + "...";
+      }
+      
+      const fontSize = 12 / globalScale;
+      ctx.font = `${fontSize}px Sans-Serif`;
+      const textWidth = ctx.measureText(snippet).width;
+      const pad = fontSize * 0.8;
+      const bckgDimensions = [textWidth + pad * 2, fontSize + pad * 2];
+      
+      const bubbleX = targetNode.x + targetNode.val * 1.5;
+      const bubbleY = targetNode.y - targetNode.val * 1.5 - bckgDimensions[1];
+      
+      ctx.fillStyle = 'rgba(20, 184, 166, 0.9)'; // Teal background
+      
+      ctx.beginPath();
+      if (ctx.roundRect) {
+         ctx.roundRect(bubbleX, bubbleY, bckgDimensions[0], bckgDimensions[1], fontSize * 0.4);
+      } else {
+         ctx.rect(bubbleX, bubbleY, bckgDimensions[0], bckgDimensions[1]);
+      }
+      ctx.fill();
+      
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(snippet, bubbleX + pad, bubbleY + bckgDimensions[1] / 2);
+    }
+  }, [activeNodeName, graphData.nodes, contexts]);
+
   const handleBackgroundClick = useCallback(() => {
     if (onNodeSelect) onNodeSelect(null);
   }, [onNodeSelect]);
@@ -231,6 +280,7 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName }:
         nodeCanvasObject={paintRing}
         onNodeClick={handleNodeClick}
         onBackgroundClick={handleBackgroundClick}
+        onRenderFramePost={onRenderFramePost}
         // Force the graph to fit inside the view after it settles
         cooldownTicks={100}
       />

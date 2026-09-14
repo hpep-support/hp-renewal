@@ -16,6 +16,23 @@ export default function ContextPage() {
   const [resourceUrl, setResourceUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const blob = items[i].getAsFile();
+        if (blob) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            setImageBase64(event.target?.result as string);
+          };
+          reader.readAsDataURL(blob);
+        }
+      }
+    }
+  };
   
   const router = useRouter();
 
@@ -84,6 +101,7 @@ export default function ContextPage() {
         setEditingId(null);
         setBody("");
         setResourceUrl("");
+        setImageBase64(null);
       }
     } catch (err: any) {
       setError(err.message);
@@ -92,7 +110,7 @@ export default function ContextPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!body.trim()) return;
+    if (!body.trim() && !imageBase64) return;
     
     setIsSubmitting(true);
     setError("");
@@ -113,7 +131,8 @@ export default function ContextPage() {
         body: JSON.stringify({
           body,
           context_type: contextType,
-          resource_url: resourceUrl ? resourceUrl : null
+          resource_url: resourceUrl ? resourceUrl : null,
+          image_base64: imageBase64
         }),
       });
 
@@ -132,6 +151,7 @@ export default function ContextPage() {
       setBody("");
       setResourceUrl("");
       setEditingId(null);
+      setImageBase64(null);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -220,6 +240,7 @@ export default function ContextPage() {
                     setEditingId(null);
                     setBody("");
                     setResourceUrl("");
+                    setImageBase64(null);
                   }}
                   className="text-xs text-slate-400 hover:text-slate-200"
                 >
@@ -253,15 +274,32 @@ export default function ContextPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-300">Description</label>
+              <label className="text-sm font-medium text-slate-300">Description (Paste image here)</label>
               <textarea 
-                required
+                required={!imageBase64}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
+                onPaste={handlePaste}
                 className="w-full h-32 bg-slate-950/50 border border-slate-800 rounded-xl p-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all resize-none"
-                placeholder="Describe the context here..."
+                placeholder="Describe the context or paste an image (Ctrl+V/Cmd+V)..."
               />
             </div>
+
+            {imageBase64 && (
+              <div className="relative inline-block w-full">
+                <img src={imageBase64} alt="Pasted context" className="w-full max-h-48 object-contain bg-slate-900 rounded-lg border border-slate-700" />
+                <button
+                  type="button"
+                  onClick={() => setImageBase64(null)}
+                  className="absolute -top-2 -right-2 bg-slate-800 text-white rounded-full p-1 hover:bg-slate-700 border border-slate-600 shadow-md transition-colors"
+                  title="Remove image"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
 
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-slate-300">Resource URL (Optional)</label>
@@ -276,7 +314,7 @@ export default function ContextPage() {
 
             <button 
               type="submit" 
-              disabled={isSubmitting || !body.trim()}
+              disabled={isSubmitting || (!body.trim() && !imageBase64)}
               className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
             >
               {isSubmitting ? (editingId ? "Updating..." : "Adding...") : (editingId ? "Update Context" : "Add Context")}

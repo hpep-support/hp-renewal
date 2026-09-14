@@ -18,7 +18,7 @@ def create_context(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    entities = extract_entities(context_in.body)
+    entities = extract_entities(context_in.body, context_in.image_base64)
     
     db_context = Context(
         owner_id=current_user.id,
@@ -56,7 +56,7 @@ def update_context(
     # For MVP, allow any member to edit to see the network update, 
     # but normally we'd check owner_id.
     
-    entities = extract_entities(context_in.body)
+    entities = extract_entities(context_in.body, context_in.image_base64)
     
     db_context.body = context_in.body
     db_context.context_type = context_in.context_type
