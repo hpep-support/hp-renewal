@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
+import * as d3 from "d3-force";
 
 // Dynamically import react-force-graph-2d to prevent SSR issues
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), { ssr: false });
@@ -10,107 +11,111 @@ interface NetworkGraphProps {
   contexts: any[];
   onNodeSelect?: (nodeName: string | null) => void;
   activeNodeName?: string | null;
+  theme?: string;
+  layoutType?: string;
 }
 
-export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName }: NetworkGraphProps) {
+export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName, theme = "dark", layoutType = "radial" }: NetworkGraphProps) {
   const [graphData, setGraphData] = useState<{ nodes: any[]; links: any[] }>({ nodes: [], links: [] });
   const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
+  const [searchQuery, setSearchQuery] = useState("");
   
   // Highlighting sets
   const [highlightNodes, setHighlightNodes] = useState(new Set());
   const [highlightLinks, setHighlightLinks] = useState(new Set());
-  const [hoverNode, setHoverNode] = useState(null);
+  const [hoverNode, setHoverNode] = useState<any>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const fgRef = useRef<any>();
+  const fgRef = useRef<any>(null);
 
   useEffect(() => {
-    // Generate mock graph data based on contexts
-    const nodes: any[] = [];
+    // Process contexts into nodes and links
+    const nodesMap = new Map();
     const links: any[] = [];
-
-    // Add central DAO node
-    nodes.push({ id: "dao", name: "DAO Core", val: 20, color: "#4f46e5" });
-
-    contexts.forEach((ctx, i) => {
-      const isAsIs = ctx.context_type === "asis";
-      const nodeId = `ctx-${ctx.id}`;
-      
-      nodes.push({
-        id: nodeId,
-        name: isAsIs ? `As-Is: ${ctx.body.substring(0, 15)}...` : `To-Be: ${ctx.body.substring(0, 15)}...`,
-        val: 10,
-        color: isAsIs ? "#1e293b" : "#4338ca",
-        url: ctx.resource_url,
-      });
-
-      // Link context to DAO core
-      links.push({
-        source: "dao",
-        target: nodeId,
-      });
-
-      // Entity Extraction (Using LLM extracted JSON relationships from backend)
-      let relationships: {source: string, target: string}[] = [];
-      
-      try {
-        if (ctx.extracted_entities && ctx.extracted_entities !== "[]") {
-          relationships = JSON.parse(ctx.extracted_entities);
-        }
-      } catch (err) {
-        console.error("Failed to parse extracted entities JSON:", err);
-      }
-
-      // Limit relationships to avoid graph explosion
-      const limitedRels = relationships.slice(0, 30);
-
-      limitedRels.forEach((rel) => {
-        if (!rel.source || !rel.target) return;
-        
-        const srcName = rel.source.trim();
-        const tgtName = rel.target.trim();
-        if (!srcName || !tgtName) return;
-
-        const srcNodeId = `entity-${srcName}`;
-        const tgtNodeId = `entity-${tgtName}`;
-
-        // Add Source Node (typically a Person)
-        if (!nodes.find((n) => n.id === srcNodeId)) {
-          const isPerson = srcName.endsWith("氏") || srcName.length <= 4;
-          nodes.push({ 
-            id: srcNodeId, 
-            name: srcName, 
-            val: isPerson ? 4 : 7, 
-            color: isPerson ? "#0ea5e9" : "#14b8a6" 
-          });
-        }
-
-        // Add Target Node (typically a Project)
-        if (!nodes.find((n) => n.id === tgtNodeId)) {
-          const isPerson = tgtName.endsWith("氏") || tgtName.length <= 4;
-          nodes.push({ 
-            id: tgtNodeId, 
-            name: tgtName, 
-            val: isPerson ? 4 : 7, 
-            color: isPerson ? "#0ea5e9" : "#14b8a6" 
-          });
-        }
-
-        // Link Source -> Target (e.g. Person -> Project)
-        links.push({
-          source: srcNodeId,
-          target: tgtNodeId,
-        });
-
-        // Link the Target (Project) back to the Context Node to root it in the graph
-        links.push({
-          source: nodeId,
-          target: tgtNodeId,
-        });
-      });
+    
+    // Degrees map
+    const nodeDegrees = new Map<string, number>();
+    
+    // Add DAO core node
+    nodesMap.set("dao", { 
+      id: "dao", 
+      name: "DAO Core", 
+      val: 20, 
+      color: theme === "light" ? "#4338ca" : "#4f46e5",
+      type: "organization"
     });
 
-    // Deep clone to ensure force-graph detects the new data structure properly
+    contexts.forEach((ctx, idx) => {
+      // Add context node
+      const ctxId = `ctx-${ctx.id}`;
+      const ts = new Date(ctx.created_at).getTime();
+      nodesMap.set(ctxId, { 
+        id: ctxId, 
+        name: `Context #${ctx.id}`, 
+        val: 3, 
+        color: theme === "light" ? "#94a3b8" : "#475569", 
+        timestamp: ts,
+        type: "context"
+      });
+      
+      // Link context to DAO core
+      links.push({ source: ctxId, target: "dao" });
+      nodeDegrees.set("dao", (nodeDegrees.get("dao") || 0) + 1);
+
+      if (ctx.extracted_entities && ctx.extracted_entities !== "[]") {
+        try {
+          const relationships = JSON.parse(ctx.extracted_entities);
+          relationships.forEach((rel: any) => {
+            const srcId = `entity-${rel.source}`;
+            const tgtId = `entity-${rel.target}`;
+            const srcType = rel.source_type || "person";
+            const tgtType = rel.target_type || "project";
+            
+            if (!nodesMap.has(srcId)) {
+              nodesMap.set(srcId, { 
+                id: srcId, 
+                name: rel.source, 
+                color: getThemeColors("#0ea5e9", srcType === "person"), 
+                timestamp: ts,
+                type: srcType
+              });
+            }
+            if (!nodesMap.has(tgtId)) {
+              nodesMap.set(tgtId, { 
+                id: tgtId, 
+                name: rel.target, 
+                color: getThemeColors("#10b981", tgtType === "person"), 
+                timestamp: ts,
+                type: tgtType
+              });
+            }
+            
+            // Link entities to the context where they were mentioned
+            links.push({ source: srcId, target: ctxId, type: "mention" });
+            links.push({ source: tgtId, target: ctxId, type: "mention" });
+            
+            // Link entities to each other
+            links.push({ source: srcId, target: tgtId, type: rel.type || "actual", event: rel.event });
+            
+            nodeDegrees.set(srcId, (nodeDegrees.get(srcId) || 0) + 1);
+            nodeDegrees.set(tgtId, (nodeDegrees.get(tgtId) || 0) + 1);
+          });
+        } catch (e) {
+          console.error("Failed to parse relationships for context", ctx.id);
+        }
+      }
+    });
+
+    // Update node sizes based on degree
+    const nodes = Array.from(nodesMap.values()).map(n => {
+       const degree = nodeDegrees.get(n.id) || 0;
+       if (n.id !== "dao" && n.type !== "context") {
+          n.val = Math.max(3, Math.min(20, degree * 1.5));
+          n.degree = degree;
+       }
+       return n;
+    });
+    
     const newGraphData = {
       nodes: nodes.map(n => ({...n})),
       links: links.map(l => ({...l}))
@@ -118,23 +123,59 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName }:
     
     setGraphData(newGraphData);
     
-    // Kick the simulation to organize new nodes (try a few times as data settles)
-    [100, 500, 1000].forEach(delay => {
-      setTimeout(() => {
-        if (fgRef.current) {
-          fgRef.current.d3ReheatSimulation();
+    // Kick the simulation to organize new nodes
+    setTimeout(() => {
+      if (fgRef.current && newGraphData.nodes.length > 0) {
+        const timestamps = newGraphData.nodes.map(n => n.timestamp || 0).filter(t => t > 0);
+        const maxTime = timestamps.length > 0 ? Math.max(...timestamps) : 1;
+        const minTime = timestamps.length > 0 ? Math.min(...timestamps) : 0;
+        
+        const timeThreshold = maxTime - (24 * 60 * 60 * 1000);
+        
+        newGraphData.nodes.forEach(n => {
+           n.isNew = (n.timestamp && n.timestamp >= timeThreshold && n.id !== "dao" && !n.id.startsWith("ctx-"));
+        });
+        
+        // Apply force layout based on layoutType
+        if (layoutType === "radial") {
+          fgRef.current.d3Force('radial', d3.forceRadial(
+            (d: any) => {
+              if (d.id === "dao") return 0;
+              if (!d.timestamp || maxTime === minTime) return 200;
+              const ratio = (d.timestamp - minTime) / (maxTime - minTime);
+              return 50 + (ratio * 400); // 50 to 450 radius
+            }, 
+            dimensions.width / 2, dimensions.height / 2
+          ).strength(0.8));
+          fgRef.current.d3Force('charge').strength(-100);
+        } else if (layoutType === "force") {
+          fgRef.current.d3Force('radial', null);
+          fgRef.current.d3Force('charge').strength(-300);
+        } else if (layoutType === "hierarchical") {
+          fgRef.current.d3Force('radial', null);
+          fgRef.current.d3Force('charge').strength(-200);
         }
-      }, delay);
-    });
-  }, [contexts]);
+        
+        fgRef.current.d3ReheatSimulation();
+      }
+    }, 100);
+  }, [contexts, dimensions, theme, layoutType]);
 
-  // Update highlights when activeNodeName or graphData changes
+  const getThemeColors = (baseColor: string, isPerson: boolean) => {
+    if (theme === "light") {
+      return isPerson ? "#0284c7" : "#0d9488"; // darker blue/teal for light bg
+    } else if (theme === "colorful") {
+      // Generate deterministic vibrant colors based on name length
+      return `hsl(${(baseColor.charCodeAt(1) * 20) % 360}, 80%, 60%)`; 
+    }
+    return baseColor; // default dark theme colors
+  };
+
   useEffect(() => {
     setHighlightNodes(new Set());
     setHighlightLinks(new Set());
     
     if (activeNodeName) {
-      // Find the node id corresponding to activeNodeName
       const targetNode = graphData.nodes.find(n => n.name === activeNodeName);
       if (targetNode) {
         updateHighlight(targetNode);
@@ -147,7 +188,6 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName }:
     const highlightLinks = new Set();
     
     graphData.links.forEach(link => {
-      // Force graph normalizes source/target to object references after init
       const source = typeof link.source === 'object' ? link.source.id : link.source;
       const target = typeof link.target === 'object' ? link.target.id : link.target;
       
@@ -184,7 +224,6 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName }:
   }, []);
 
   const handleNodeClick = useCallback((node: any) => {
-    // Center at node on click
     if (fgRef.current) {
       fgRef.current.centerAt(node.x, node.y, 1000);
       fgRef.current.zoom(8, 2000);
@@ -193,97 +232,189 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName }:
     if (node.id.startsWith("entity-")) {
       if (onNodeSelect) onNodeSelect(node.name);
     } else {
-      if (onNodeSelect) onNodeSelect(null); // Clear selection if clicking a context/DAO node
+      if (onNodeSelect) onNodeSelect(null);
     }
   }, [onNodeSelect]);
 
-  const onRenderFramePost = useCallback((ctx: any, globalScale: number) => {
-    if (!activeNodeName) return;
-    const targetNode = graphData.nodes.find(n => n.name === activeNodeName);
-    if (!targetNode || targetNode.x === undefined || targetNode.y === undefined) return;
+  const handleSearch = () => {
+    if (!searchQuery) return;
+    const lowerQuery = searchQuery.toLowerCase();
+    const targetNode = graphData.nodes.find(n => n.name && n.name.toLowerCase().includes(lowerQuery));
+    if (targetNode && fgRef.current) {
+      fgRef.current.centerAt(targetNode.x, targetNode.y, 1000);
+      fgRef.current.zoom(8, 2000);
+      if (onNodeSelect) onNodeSelect(targetNode.name);
+    }
+  };
 
-    // Find snippet
-    const relatedCtx = contexts.find(c => 
-      c.body.includes(activeNodeName) || 
-      (c.extracted_entities && c.extracted_entities.includes(activeNodeName))
-    );
+  const handleFitScreen = () => {
+    if (fgRef.current) {
+      fgRef.current.zoomToFit(1000, 20);
+    }
+  };
+
+  const drawNode = useCallback((node: any, ctx: any, globalScale: number) => {
+    const isHighlighted = highlightNodes.has(node) || node === hoverNode;
     
-    if (relatedCtx) {
-      // extract snippet
-      const idx = relatedCtx.body.indexOf(activeNodeName);
-      let snippet = relatedCtx.body;
-      if (idx !== -1) {
-         const start = Math.max(0, idx - 15);
-         const end = Math.min(relatedCtx.body.length, idx + activeNodeName.length + 20);
-         snippet = (start > 0 ? "..." : "") + relatedCtx.body.substring(start, end).replace(/\n/g, ' ') + "...";
-      } else {
-         snippet = snippet.substring(0, 30).replace(/\n/g, ' ') + "...";
-      }
-      
-      const fontSize = 12 / globalScale;
-      ctx.font = `${fontSize}px Sans-Serif`;
-      const textWidth = ctx.measureText(snippet).width;
-      const pad = fontSize * 0.8;
-      const bckgDimensions = [textWidth + pad * 2, fontSize + pad * 2];
-      
-      const bubbleX = targetNode.x + targetNode.val * 1.5;
-      const bubbleY = targetNode.y - targetNode.val * 1.5 - bckgDimensions[1];
-      
-      ctx.fillStyle = 'rgba(20, 184, 166, 0.9)'; // Teal background
-      
-      ctx.beginPath();
-      if (ctx.roundRect) {
-         ctx.roundRect(bubbleX, bubbleY, bckgDimensions[0], bckgDimensions[1], fontSize * 0.4);
-      } else {
-         ctx.rect(bubbleX, bubbleY, bckgDimensions[0], bckgDimensions[1]);
-      }
-      ctx.fill();
-      
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(snippet, bubbleX + pad, bubbleY + bckgDimensions[1] / 2);
+    let c = node.color;
+    if (theme === "light") {
+       c = node.type === "person" ? "#0284c7" : "#0d9488";
+       if (node.id === "dao") c = "#4338ca";
     }
-  }, [activeNodeName, graphData.nodes, contexts]);
+    if (theme === "colorful") {
+       c = `hsl(${(node.name ? node.name.length * 20 : 0) % 360}, 80%, 60%)`;
+    }
+    if (isHighlighted) {
+       c = "#facc15";
+    }
 
-  const handleBackgroundClick = useCallback(() => {
-    if (onNodeSelect) onNodeSelect(null);
-  }, [onNodeSelect]);
+    const r = node.val || 3;
+    
+    // Draw pulsing aura if new
+    if (node.isNew) {
+      const time = Date.now() / 500;
+      const pulseR = r + (Math.sin(time) + 1) * 2;
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, pulseR, 0, 2 * Math.PI, false);
+      ctx.fillStyle = 'rgba(250, 204, 21, 0.4)';
+      ctx.fill();
+    }
 
-  const paintRing = useCallback((node: any, ctx: any) => {
-    // add ring just for highlighted nodes
+    ctx.fillStyle = c;
     ctx.beginPath();
-    ctx.arc(node.x, node.y, node.val * 1.4, 0, 2 * Math.PI, false);
-    ctx.fillStyle = node.id.startsWith("entity-") ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0)';
+    
+    // Shapes based on entity type
+    if (node.type === "project") {
+      ctx.rect(node.x - r, node.y - r, r * 2, r * 2);
+    } else if (node.type === "organization") {
+      // Hexagon or Triangle, let's do a diamond for simplicity
+      ctx.moveTo(node.x, node.y - r);
+      ctx.lineTo(node.x + r, node.y);
+      ctx.lineTo(node.x, node.y + r);
+      ctx.lineTo(node.x - r, node.y);
+      ctx.closePath();
+    } else {
+      // Default / person is circle
+      ctx.arc(node.x, node.y, r, 0, 2 * Math.PI, false);
+    }
+    
     ctx.fill();
-  }, []);
+    
+    // Draw text with LOD (Level of Detail)
+    // Only show labels if zoomed in (globalScale > 2) or if node is important (r > 5) or highlighted
+    if (globalScale > 1.5 || r > 5 || isHighlighted) {
+      const label = node.name;
+      const fontSize = 12 / globalScale;
+      ctx.font = `${Math.max(fontSize, 4)}px Sans-Serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      
+      ctx.fillStyle = isHighlighted ? (theme === "light" ? "#000" : "#fff") : (theme === "light" ? "rgba(0, 0, 0, 0.8)" : "rgba(255, 255, 255, 0.8)");
+      ctx.fillText(label, node.x, node.y + r + 2);
+    }
+  }, [highlightNodes, hoverNode, theme]);
+
+  const drawLink = useCallback((link: any, ctx: any, globalScale: number) => {
+    // Only used if we want custom link rendering, but let's use the built-in props and linkCanvasObject for events
+    if (link.event) {
+      const start = link.source;
+      const end = link.target;
+      if (typeof start === 'object' && typeof end === 'object') {
+        const textPos = Object.assign({}, start, {
+          x: start.x + (end.x - start.x) / 2,
+          y: start.y + (end.y - start.y) / 2
+        });
+        const fontSize = 10 / globalScale;
+        ctx.font = `${fontSize}px Sans-Serif`;
+        ctx.fillStyle = theme === "light" ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.5)";
+        ctx.fillText(link.event, textPos.x, textPos.y);
+      }
+    }
+  }, [theme]);
+
 
   return (
-    <div ref={containerRef} className="w-full h-[400px] bg-slate-950/80 rounded-xl overflow-hidden border border-slate-800">
+    <div ref={containerRef} className="w-full relative h-[500px] bg-slate-950/80 rounded-xl overflow-hidden border border-slate-800">
+      
+      {/* Search & Controls Overlay */}
+      <div className="absolute top-2 left-2 z-10 flex gap-2">
+        <div className="flex bg-slate-800 rounded-md overflow-hidden border border-slate-700">
+          <input 
+            type="text" 
+            placeholder="Search node..." 
+            className="bg-transparent text-slate-200 text-xs px-2 py-1 outline-none w-32"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+          />
+          <button onClick={handleSearch} className="bg-slate-700 hover:bg-slate-600 px-2 text-xs text-white">Find</button>
+        </div>
+        <button onClick={handleFitScreen} className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-2 py-1 rounded-md border border-slate-700">
+          Fit to Screen
+        </button>
+      </div>
+
+      {/* Legend Overlay */}
+      <div className={`absolute bottom-2 left-2 z-10 p-2 text-xs rounded-md border ${theme === 'light' ? 'bg-white/80 border-slate-300 text-slate-700' : 'bg-slate-800/80 border-slate-700 text-slate-300'}`}>
+        <div className="font-semibold mb-1">Legend</div>
+        <div className="flex items-center gap-1 mb-1"><div className="w-3 h-3 rounded-full bg-sky-500"></div> Person</div>
+        <div className="flex items-center gap-1 mb-1"><div className="w-3 h-3 bg-emerald-500"></div> Project</div>
+        <div className="flex items-center gap-1 mb-1"><div className="w-0 h-0 border-l-[6px] border-r-[6px] border-b-[10px] border-l-transparent border-r-transparent border-b-indigo-500"></div> Organization</div>
+        <div className="flex items-center gap-1"><div className="w-3 h-0.5 bg-orange-500"></div> Bridge Link</div>
+      </div>
+
       <ForceGraph2D
         ref={fgRef}
         width={dimensions.width}
         height={dimensions.height}
         graphData={graphData}
-        nodeLabel="name"
-        nodeColor={(node: any) => {
-          if (highlightNodes.size === 0) return node.color;
-          return highlightNodes.has(node) ? node.color : 'rgba(100, 100, 100, 0.1)';
-        }}
-        nodeRelSize={1}
+        
+        nodeCanvasObject={drawNode}
+        
         linkColor={(link: any) => {
-          if (highlightNodes.size === 0) return "rgba(99, 102, 241, 0.2)";
-          return highlightLinks.has(link) ? "rgba(99, 102, 241, 0.8)" : "rgba(100, 100, 100, 0.05)";
+          if (highlightLinks.has(link)) return "#facc15";
+          if (link.type === "bridge") return "#f97316"; 
+          return theme === "light" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.2)";
         }}
-        linkWidth={(link: any) => (highlightLinks.has(link) ? 2 : 1)}
-        nodeCanvasObjectMode={(node: any) => highlightNodes.has(node) ? 'before' : undefined}
-        nodeCanvasObject={paintRing}
+        linkWidth={(link: any) => {
+           let w = 1;
+           if (link.type === "bridge") w = 2;
+           if (highlightLinks.has(link)) w = 3;
+           return w;
+        }}
+        linkCanvasObjectMode={() => 'after'}
+        linkCanvasObject={drawLink}
+        
         onNodeClick={handleNodeClick}
-        onBackgroundClick={handleBackgroundClick}
-        onRenderFramePost={onRenderFramePost}
-        // Force the graph to fit inside the view after it settles
-        cooldownTicks={100}
+        onBackgroundClick={() => {
+           if (onNodeSelect) onNodeSelect(null);
+           setHoverNode(null);
+        }}
+        
+        onNodeHover={(node) => setHoverNode(node)}
+        dagMode={layoutType === "hierarchical" ? "td" : undefined}
+        dagLevelDistance={layoutType === "hierarchical" ? 60 : undefined}
+        
+        cooldownTicks={150} // Stabilize after 150 ticks
       />
+      
+      {/* Custom Tooltip rendered via DOM for hoverNode */}
+      {hoverNode && (
+        <div 
+          className="absolute pointer-events-none bg-slate-800 text-white p-2 rounded shadow-lg border border-slate-700 text-xs z-20"
+          style={{
+            // Position near the center of the graph or mouse (react-force-graph doesn't directly expose screen coordinates in hover easily, so we can use a fixed corner or attempt to map coords if we track mouse)
+            // For simplicity, display in the top right corner
+            top: '10px',
+            right: '10px',
+            maxWidth: '200px'
+          }}
+        >
+          <div className="font-bold">{hoverNode.name}</div>
+          <div className="text-slate-400 capitalize">{hoverNode.type}</div>
+          {hoverNode.degree !== undefined && <div>Connections: {hoverNode.degree}</div>}
+        </div>
+      )}
     </div>
   );
 }

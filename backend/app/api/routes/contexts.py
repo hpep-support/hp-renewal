@@ -9,6 +9,8 @@ from app.models.context import Context
 from app.models.user import User
 from app.schemas.context import ContextCreate, ContextResponse, EntityRename
 import json
+from .upsert_helper import upsert_entities_from_json
+
 
 router = APIRouter()
 
@@ -30,6 +32,9 @@ def create_context(
     db.add(db_context)
     db.commit()
     db.refresh(db_context)
+    
+    upsert_entities_from_json(db, entities)
+    
     return db_context
 
 @router.get("/", response_model=List[ContextResponse])
@@ -65,6 +70,9 @@ def update_context(
     
     db.commit()
     db.refresh(db_context)
+    
+    upsert_entities_from_json(db, entities)
+    
     return db_context
 
 @router.delete("/{context_id}")
