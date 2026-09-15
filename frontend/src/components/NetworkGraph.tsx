@@ -150,11 +150,18 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName, t
           fgRef.current.d3Force('charge').strength(-100);
         } else if (layoutType === "force") {
           fgRef.current.d3Force('radial', null);
-          fgRef.current.d3Force('charge').strength(-300);
+          fgRef.current.d3Force('charge').strength(-600);
         } else if (layoutType === "hierarchical") {
           fgRef.current.d3Force('radial', null);
-          fgRef.current.d3Force('charge').strength(-200);
+          fgRef.current.d3Force('charge').strength(-800);
         }
+        
+        // Add a collide force to prevent label overlap
+        fgRef.current.d3Force('collide', d3.forceCollide((n: any) => {
+           // Estimate text width for Japanese characters (~12px per char) + padding
+           const textWidth = n.name ? n.name.length * 14 : 0;
+           return (n.val || 3) + textWidth / 2 + 10;
+        }).strength(1));
         
         fgRef.current.d3ReheatSimulation();
       }
@@ -179,6 +186,12 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName, t
       const targetNode = graphData.nodes.find(n => n.name === activeNodeName);
       if (targetNode) {
         updateHighlight(targetNode);
+        
+        // Also jump/center the camera on this node if fgRef exists
+        if (fgRef.current && targetNode.x !== undefined && targetNode.y !== undefined) {
+          fgRef.current.centerAt(targetNode.x, targetNode.y, 1000);
+          fgRef.current.zoom(8, 2000);
+        }
       }
     }
   }, [activeNodeName, graphData]);
@@ -310,7 +323,17 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName, t
       ctx.textBaseline = 'top';
       
       ctx.fillStyle = isHighlighted ? (theme === "light" ? "#000" : "#fff") : (theme === "light" ? "rgba(0, 0, 0, 0.8)" : "rgba(255, 255, 255, 0.8)");
-      ctx.fillText(label, node.x, node.y + r + 2);
+      ctx.save();
+      ctx.translate(node.x, node.y + r + 4);
+      if (layoutType === 'hierarchical') {
+        ctx.rotate(Math.PI / 6); // 30 degrees
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, 2, 2);
+      } else {
+        ctx.fillText(label, 0, 0);
+      }
+      ctx.restore();
     }
   }, [highlightNodes, hoverNode, theme]);
 
@@ -393,7 +416,7 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName, t
         
         onNodeHover={(node) => setHoverNode(node)}
         dagMode={layoutType === "hierarchical" ? "td" : undefined}
-        dagLevelDistance={layoutType === "hierarchical" ? 60 : undefined}
+        dagLevelDistance={layoutType === "hierarchical" ? 100 : undefined}
         
         cooldownTicks={150} // Stabilize after 150 ticks
       />
