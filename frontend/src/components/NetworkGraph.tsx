@@ -268,7 +268,10 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName, t
 
   const drawNode = useCallback((node: any, ctx: any, globalScale: number) => {
     const isHighlighted = highlightNodes.has(node) || node === hoverNode;
+    const hasActiveSelection = highlightNodes.size > 0;
+    const isDimmed = hasActiveSelection && !isHighlighted;
     
+    // Determine base color
     let c = node.color;
     if (theme === "light") {
        c = node.type === "person" ? "#0284c7" : "#0d9488";
@@ -277,20 +280,33 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName, t
     if (theme === "colorful") {
        c = `hsl(${(node.name ? node.name.length * 20 : 0) % 360}, 80%, 60%)`;
     }
-    if (isHighlighted) {
-       c = "#facc15";
-    }
 
     const r = node.val || 3;
     
-    // Draw pulsing aura if new
-    if (node.isNew) {
+    // Apply dimming for non-highlighted nodes when a selection is active
+    if (isDimmed) {
+      ctx.globalAlpha = 0.15;
+    }
+    
+    // Draw pulsing aura if new (only when not dimmed)
+    if (node.isNew && !isDimmed) {
       const time = Date.now() / 500;
       const pulseR = r + (Math.sin(time) + 1) * 2;
       ctx.beginPath();
       ctx.arc(node.x, node.y, pulseR, 0, 2 * Math.PI, false);
       ctx.fillStyle = 'rgba(250, 204, 21, 0.4)';
       ctx.fill();
+    }
+
+    // Draw highlight glow ring (behind the node)
+    if (isHighlighted) {
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, r + 4, 0, 2 * Math.PI, false);
+      ctx.fillStyle = 'rgba(250, 204, 21, 0.25)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(250, 204, 21, 0.7)';
+      ctx.lineWidth = 2 / globalScale;
+      ctx.stroke();
     }
 
     ctx.fillStyle = c;
@@ -300,21 +316,18 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName, t
     if (node.type === "project") {
       ctx.rect(node.x - r, node.y - r, r * 2, r * 2);
     } else if (node.type === "organization") {
-      // Hexagon or Triangle, let's do a diamond for simplicity
       ctx.moveTo(node.x, node.y - r);
       ctx.lineTo(node.x + r, node.y);
       ctx.lineTo(node.x, node.y + r);
       ctx.lineTo(node.x - r, node.y);
       ctx.closePath();
     } else {
-      // Default / person is circle
       ctx.arc(node.x, node.y, r, 0, 2 * Math.PI, false);
     }
     
     ctx.fill();
     
     // Draw text with LOD (Level of Detail)
-    // Only show labels if zoomed in (globalScale > 2) or if node is important (r > 5) or highlighted
     if (globalScale > 1.5 || r > 5 || isHighlighted) {
       const label = node.name;
       const fontSize = 12 / globalScale;
@@ -322,7 +335,22 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName, t
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       
-      ctx.fillStyle = isHighlighted ? (theme === "light" ? "#000" : "#fff") : (theme === "light" ? "rgba(0, 0, 0, 0.8)" : "rgba(255, 255, 255, 0.8)");
+      // Text background for highlighted nodes to improve readability
+      if (isHighlighted) {
+        const textWidth = ctx.measureText(label).width;
+        const bgPadding = 2;
+        ctx.fillStyle = theme === "light" ? 'rgba(255,255,255,0.85)' : 'rgba(15,23,42,0.85)';
+        ctx.fillRect(
+          node.x - textWidth / 2 - bgPadding,
+          node.y + r + 2,
+          textWidth + bgPadding * 2,
+          Math.max(fontSize, 4) + bgPadding * 2
+        );
+      }
+      
+      ctx.fillStyle = isHighlighted
+        ? (theme === "light" ? "#000" : "#facc15")
+        : (theme === "light" ? "rgba(0, 0, 0, 0.8)" : "rgba(255, 255, 255, 0.8)");
       ctx.save();
       ctx.translate(node.x, node.y + r + 4);
       if (layoutType === 'hierarchical') {
@@ -335,7 +363,10 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName, t
       }
       ctx.restore();
     }
-  }, [highlightNodes, hoverNode, theme]);
+    
+    // Reset global alpha
+    ctx.globalAlpha = 1;
+  }, [highlightNodes, hoverNode, theme, layoutType]);
 
   const drawLink = useCallback((link: any, ctx: any, globalScale: number) => {
     // Only used if we want custom link rendering, but let's use the built-in props and linkCanvasObject for events
@@ -395,14 +426,16 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName, t
         nodeCanvasObject={drawNode}
         
         linkColor={(link: any) => {
-          if (highlightLinks.has(link)) return "#facc15";
-          if (link.type === "bridge") return "#f97316"; 
-          return theme === "light" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.2)";
+          const hasActive = highlightNodes.size > 0;
+          if (highlightLinks.has(link)) return "rgba(250, 204, 21, 0.35)";
+          if (link.type === "bridge") return hasActive ? "rgba(249, 115, 22, 0.15)" : "#f97316";
+          if (hasActive) return theme === "light" ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.04)";
+          return theme === "light" ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.15)";
         }}
         linkWidth={(link: any) => {
-           let w = 1;
-           if (link.type === "bridge") w = 2;
-           if (highlightLinks.has(link)) w = 3;
+           let w = 0.5;
+           if (link.type === "bridge") w = 1.5;
+           if (highlightLinks.has(link)) w = 1.5;
            return w;
         }}
         linkCanvasObjectMode={() => 'after'}
