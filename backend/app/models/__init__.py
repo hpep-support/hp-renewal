@@ -7,6 +7,8 @@ from app.models.graph_preference import GraphPreference
 from app.models.entity import Entity
 from app.models.community import Community
 
+from app.plugins.blog.models import Article
+
 # For Alembic to discover all models
-__all__ = ["User", "Record", "SynergyCandidate", "Context", "InviteCode", "GraphPreference", "Entity", "Community"]
+__all__ = ["User", "Record", "SynergyCandidate", "Context", "InviteCode", "GraphPreference", "Entity", "Community", "Article"]
 
