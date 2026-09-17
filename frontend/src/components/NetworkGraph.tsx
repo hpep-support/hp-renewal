@@ -13,9 +13,10 @@ interface NetworkGraphProps {
   activeNodeName?: string | null;
   theme?: string;
   layoutType?: string;
+  heroMode?: boolean;
 }
 
-export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName, theme = "dark", layoutType = "radial" }: NetworkGraphProps) {
+export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName, theme = "dark", layoutType = "radial", heroMode = false }: NetworkGraphProps) {
   const [graphData, setGraphData] = useState<{ nodes: any[]; links: any[] }>({ nodes: [], links: [] });
   const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
   const [searchQuery, setSearchQuery] = useState("");
@@ -219,7 +220,7 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName, t
     if (containerRef.current) {
       setDimensions({
         width: containerRef.current.offsetWidth,
-        height: 500,
+        height: heroMode ? containerRef.current.offsetHeight || 600 : 500,
       });
     }
     
@@ -227,7 +228,7 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName, t
       if (containerRef.current) {
         setDimensions({
           width: containerRef.current.offsetWidth,
-          height: 500,
+          height: heroMode ? containerRef.current.offsetHeight || 600 : 500,
         });
       }
     };
@@ -388,34 +389,38 @@ export default function NetworkGraph({ contexts, onNodeSelect, activeNodeName, t
 
 
   return (
-    <div ref={containerRef} className="w-full relative h-[500px] bg-slate-950/80 rounded-xl overflow-hidden border border-slate-800">
+    <div ref={containerRef} className={`w-full relative ${heroMode ? 'h-full min-h-[600px] bg-transparent' : 'h-[500px] bg-slate-950/80 rounded-xl border border-slate-800'} overflow-hidden`}>
       
       {/* Search & Controls Overlay */}
-      <div className="absolute top-2 left-2 z-10 flex gap-2">
-        <div className="flex bg-slate-800 rounded-md overflow-hidden border border-slate-700">
-          <input 
-            type="text" 
-            placeholder="Search node..." 
-            className="bg-transparent text-slate-200 text-xs px-2 py-1 outline-none w-32"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSearch()}
-          />
-          <button onClick={handleSearch} className="bg-slate-700 hover:bg-slate-600 px-2 text-xs text-white">Find</button>
+      {!heroMode && (
+        <div className="absolute top-2 left-2 z-10 flex gap-2">
+          <div className="flex bg-slate-800 rounded-md overflow-hidden border border-slate-700">
+            <input 
+              type="text" 
+              placeholder="Search node..." 
+              className="bg-transparent text-slate-200 text-xs px-2 py-1 outline-none w-32"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            />
+            <button onClick={handleSearch} className="bg-slate-700 hover:bg-slate-600 px-2 text-xs text-white">Find</button>
+          </div>
+          <button onClick={handleFitScreen} className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-2 py-1 rounded-md border border-slate-700">
+            Fit to Screen
+          </button>
         </div>
-        <button onClick={handleFitScreen} className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-2 py-1 rounded-md border border-slate-700">
-          Fit to Screen
-        </button>
-      </div>
+      )}
 
       {/* Legend Overlay */}
-      <div className={`absolute bottom-2 left-2 z-10 p-2 text-xs rounded-md border ${theme === 'light' ? 'bg-white/80 border-slate-300 text-slate-700' : 'bg-slate-800/80 border-slate-700 text-slate-300'}`}>
-        <div className="font-semibold mb-1">Legend</div>
-        <div className="flex items-center gap-1 mb-1"><div className="w-3 h-3 rounded-full bg-sky-500"></div> Person</div>
-        <div className="flex items-center gap-1 mb-1"><div className="w-3 h-3 bg-emerald-500"></div> Project</div>
-        <div className="flex items-center gap-1 mb-1"><div className="w-0 h-0 border-l-[6px] border-r-[6px] border-b-[10px] border-l-transparent border-r-transparent border-b-indigo-500"></div> Organization</div>
-        <div className="flex items-center gap-1"><div className="w-3 h-0.5 bg-orange-500"></div> Bridge Link</div>
-      </div>
+      {!heroMode && (
+        <div className={`absolute bottom-2 left-2 z-10 p-2 text-xs rounded-md border ${theme === 'light' ? 'bg-white/80 border-slate-300 text-slate-700' : 'bg-slate-800/80 border-slate-700 text-slate-300'}`}>
+          <div className="font-semibold mb-1">Legend</div>
+          <div className="flex items-center gap-1 mb-1"><div className="w-3 h-3 rounded-full bg-sky-500"></div> Person</div>
+          <div className="flex items-center gap-1 mb-1"><div className="w-3 h-3 bg-emerald-500"></div> Project</div>
+          <div className="flex items-center gap-1 mb-1"><div className="w-0 h-0 border-l-[6px] border-r-[6px] border-b-[10px] border-l-transparent border-r-transparent border-b-indigo-500"></div> Organization</div>
+          <div className="flex items-center gap-1"><div className="w-3 h-0.5 bg-orange-500"></div> Bridge Link</div>
+        </div>
+      )}
 
       <ForceGraph2D
         ref={fgRef}

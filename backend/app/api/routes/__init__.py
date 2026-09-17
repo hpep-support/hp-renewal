@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.routes import auth, records, contexts, synergies, invites, graph_preferences
+from app.api.routes import auth, records, contexts, synergies, invites, graph_preferences, communities
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -8,3 +8,4 @@ api_router.include_router(contexts.router, prefix="/contexts", tags=["contexts"]
 api_router.include_router(synergies.router, prefix="/synergies", tags=["synergies"])
 api_router.include_router(invites.router, prefix="/invites", tags=["invites"])
 api_router.include_router(graph_preferences.router, prefix="/preferences", tags=["preferences"])
+api_router.include_router(communities.router, prefix="/communities", tags=["communities"])

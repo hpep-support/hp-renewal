@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useCommunity } from "../CommunityProvider";
 
 import NetworkGraph from "@/components/NetworkGraph";
 
 export default function ContextPage() {
+  const { currentCommunityId } = useCommunity();
   const [contexts, setContexts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -43,7 +45,7 @@ export default function ContextPage() {
     try {
       const token = localStorage.getItem("access_token");
       if (!token) return;
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api"}/preferences/`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api"}/preferences`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
@@ -65,7 +67,7 @@ export default function ContextPage() {
       if (newTheme) payload.theme = newTheme;
       if (newLayout) payload.layout_type = newLayout;
       
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api"}/preferences/`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api"}/preferences`, {
         method: "PUT",
         headers: { 
           "Authorization": `Bearer ${token}`,
@@ -90,8 +92,14 @@ export default function ContextPage() {
         router.push("/login");
         return;
       }
+      
+      if (!currentCommunityId) {
+        setContexts([]);
+        setLoading(false);
+        return;
+      }
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api"}/contexts`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api"}/contexts?community_id=${currentCommunityId}`, {
         headers: {
           "Authorization": `Bearer ${token}`
         }
@@ -113,12 +121,12 @@ export default function ContextPage() {
       setError(err.message);
       setLoading(false);
     }
-  }, [router]);
+  }, [router, currentCommunityId]);
 
   useEffect(() => {
     fetchContexts();
     fetchPreferences();
-  }, [fetchContexts, fetchPreferences]);
+  }, [fetchContexts, fetchPreferences, currentCommunityId]);
 
 
   const handleEdit = (context: any) => {
@@ -181,7 +189,8 @@ export default function ContextPage() {
           body,
           context_type: contextType,
           resource_url: resourceUrl ? resourceUrl : null,
-          image_base64: imageBase64
+          image_base64: imageBase64,
+          community_id: currentCommunityId
         }),
       });
 
@@ -216,7 +225,7 @@ export default function ContextPage() {
     
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api"}/contexts/entities/rename`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api"}/contexts/entities/rename?community_id=${currentCommunityId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -239,7 +248,7 @@ export default function ContextPage() {
     
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api"}/contexts/entities/${encodeURIComponent(selectedEntity)}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api"}/contexts/entities/${encodeURIComponent(selectedEntity)}?community_id=${currentCommunityId}`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${token}`

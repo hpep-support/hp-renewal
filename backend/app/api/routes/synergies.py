@@ -10,7 +10,7 @@ from app.schemas.synergy import SynergyCandidateResponse
 
 router = APIRouter()
 
-@router.get("/", response_model=List[SynergyCandidateResponse])
+@router.get("", response_model=List[SynergyCandidateResponse])
 def get_synergy_candidates(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)

@@ -10,7 +10,7 @@ from app.schemas.graph_preference import GraphPreferenceResponse, GraphPreferenc
 
 router = APIRouter()
 
-@router.get("/", response_model=GraphPreferenceResponse)
+@router.get("", response_model=GraphPreferenceResponse)
 def get_graph_preference(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -27,7 +27,7 @@ def get_graph_preference(
         db.refresh(pref)
     return pref
 
-@router.put("/", response_model=GraphPreferenceResponse)
+@router.put("", response_model=GraphPreferenceResponse)
 def update_graph_preference(
     pref_in: GraphPreferenceUpdate,
     db: Session = Depends(get_db),

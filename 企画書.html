@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>コミュニティ活動可視化プラットフォーム — 統合企画書</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #111827;
+      --bg-card: #1a2035;
+      --bg-card-hover: #1f2847;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-teal: #14b8a6;
+      --accent-teal-dim: rgba(20, 184, 166, 0.15);
+      --accent-indigo: #6366f1;
+      --accent-indigo-dim: rgba(99, 102, 241, 0.15);
+      --accent-amber: #f59e0b;
+      --accent-amber-dim: rgba(245, 158, 11, 0.12);
+      --accent-rose: #f43f5e;
+      --accent-rose-dim: rgba(244, 63, 94, 0.12);
+      --accent-sky: #0ea5e9;
+      --accent-sky-dim: rgba(14, 165, 233, 0.12);
+      --border: rgba(148, 163, 184, 0.1);
+      --border-accent: rgba(20, 184, 166, 0.3);
+      --gradient-hero: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+      --gradient-teal: linear-gradient(135deg, #14b8a6, #0ea5e9);
+      --gradient-indigo: linear-gradient(135deg, #6366f1, #a855f7);
+      --gradient-warm: linear-gradient(135deg, #f59e0b, #f43f5e);
+      --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      --shadow-glow-teal: 0 0 40px rgba(20, 184, 166, 0.15);
+      --shadow-glow-indigo: 0 0 40px rgba(99, 102, 241, 0.15);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Noto Sans JP', 'Inter', -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.8;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ===== NAV ===== */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(10, 14, 26, 0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+    }
+    nav .nav-inner {
+      max-width: 1200px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px;
+    }
+    nav .logo {
+      font-weight: 800; font-size: 1.1rem;
+      background: var(--gradient-teal); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      letter-spacing: -0.02em;
+    }
+    nav .nav-links { display: flex; gap: 1.5rem; list-style: none; }
+    nav .nav-links a {
+      color: var(--text-secondary); text-decoration: none; font-size: 0.85rem;
+      font-weight: 500; transition: color 0.2s;
+    }
+    nav .nav-links a:hover { color: var(--accent-teal); }
+
+    /* ===== HERO ===== */
+    .hero {
+      background: var(--gradient-hero);
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      text-align: center; padding: 8rem 2rem 6rem;
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+      background: radial-gradient(circle at 30% 40%, rgba(20,184,166,0.06) 0%, transparent 50%),
+                  radial-gradient(circle at 70% 60%, rgba(99,102,241,0.06) 0%, transparent 50%);
+      animation: heroGlow 15s ease-in-out infinite alternate;
+    }
+    @keyframes heroGlow {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      100% { transform: translate(20px, -20px) rotate(3deg); }
+    }
+    .hero-content { position: relative; z-index: 1; max-width: 900px; }
+    .hero-badge {
+      display: inline-block;
+      background: var(--accent-teal-dim); border: 1px solid var(--border-accent);
+      color: var(--accent-teal); font-size: 0.8rem; font-weight: 600;
+      padding: 0.35rem 1rem; border-radius: 100px; margin-bottom: 2rem;
+      letter-spacing: 0.05em;
+    }
+    .hero h1 {
+      font-size: clamp(2.2rem, 5vw, 3.8rem); font-weight: 900;
+      line-height: 1.25; margin-bottom: 1.5rem;
+      background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero h1 em {
+      font-style: normal;
+      background: var(--gradient-teal); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero p {
+      font-size: 1.1rem; color: var(--text-secondary);
+      max-width: 700px; margin: 0 auto 3rem; line-height: 2;
+    }
+    .hero-stats {
+      display: flex; justify-content: center; gap: 3rem;
+      flex-wrap: wrap;
+    }
+    .hero-stat .num {
+      font-size: 2.5rem; font-weight: 800; font-family: 'Inter', sans-serif;
+      background: var(--gradient-teal); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero-stat .label { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+    /* ===== SECTIONS ===== */
+    section { padding: 6rem 2rem; position: relative; }
+    .container { max-width: 1100px; margin: 0 auto; }
+
+    .section-label {
+      display: inline-block; font-size: 0.75rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--accent-teal); margin-bottom: 0.75rem;
+    }
+    .section-title {
+      font-size: clamp(1.6rem, 3vw, 2.4rem); font-weight: 800;
+      margin-bottom: 1rem; line-height: 1.35;
+    }
+    .section-desc {
+      color: var(--text-secondary); font-size: 1rem; max-width: 750px;
+      margin-bottom: 3rem; line-height: 1.9;
+    }
+
+    /* ===== CARDS ===== */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      transition: all 0.3s ease;
+    }
+    .card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-accent);
+      box-shadow: var(--shadow-glow-teal);
+      transform: translateY(-2px);
+    }
+    .card-icon {
+      width: 48px; height: 48px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 12px; margin-bottom: 1.25rem;
+      font-size: 1.5rem;
+    }
+    .card h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.75rem; }
+    .card p { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.8; }
+
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+
+    /* ===== ARCHITECTURE ===== */
+    .arch-diagram {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 3rem 2rem;
+      text-align: center;
+      margin: 2rem 0;
+    }
+    .arch-flow {
+      display: flex; flex-direction: column; align-items: center; gap: 0;
+    }
+    .arch-node {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 2rem;
+      min-width: 320px;
+      text-align: center;
+      position: relative;
+    }
+    .arch-node.highlight {
+      border-color: var(--accent-teal);
+      box-shadow: var(--shadow-glow-teal);
+    }
+    .arch-node.agent {
+      border-color: var(--accent-indigo);
+      box-shadow: var(--shadow-glow-indigo);
+    }
+    .arch-node h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .arch-node p { font-size: 0.8rem; color: var(--text-muted); }
+    .arch-arrow {
+      width: 2px; height: 40px;
+      background: linear-gradient(to bottom, var(--accent-teal), transparent);
+      position: relative;
+    }
+    .arch-arrow::after {
+      content: '▼'; position: absolute; bottom: -8px; left: 50%;
+      transform: translateX(-50%); color: var(--accent-teal); font-size: 0.6rem;
+    }
+    .arch-branches {
+      display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+    .arch-branches .arch-node { min-width: 200px; padding: 0.75rem 1rem; }
+    .arch-branches .arch-node h4 { font-size: 0.8rem; }
+
+    /* ===== HYPOTHESIS TABLE ===== */
+    .hypo-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      font-size: 0.85rem;
+    }
+    .hypo-table thead {
+      background: var(--bg-card);
+    }
+    .hypo-table th {
+      padding: 1rem; text-align: left; font-weight: 600;
+      color: var(--text-secondary); border-bottom: 1px solid var(--border);
+      font-size: 0.8rem; letter-spacing: 0.03em;
+    }
+    .hypo-table td {
+      padding: 1rem; border-bottom: 1px solid var(--border);
+      vertical-align: top; line-height: 1.7;
+    }
+    .hypo-table tr:last-child td { border-bottom: none; }
+    .hypo-table tr:hover { background: var(--bg-card); }
+    .hypo-id {
+      display: inline-block;
+      background: var(--accent-teal-dim);
+      color: var(--accent-teal);
+      font-weight: 700; font-size: 0.75rem;
+      padding: 0.15rem 0.6rem; border-radius: 6px;
+      font-family: 'Inter', monospace;
+    }
+
+    /* ===== AGENT SECTION ===== */
+    .agent-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      margin-bottom: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .agent-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    }
+    .agent-card.time::before { background: var(--gradient-teal); }
+    .agent-card.error::before { background: var(--gradient-warm); }
+    .agent-card.discovery::before { background: var(--gradient-indigo); }
+
+    .agent-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+    .agent-num {
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 12px; font-weight: 800; font-size: 1.1rem;
+      font-family: 'Inter', sans-serif;
+    }
+    .agent-card.time .agent-num { background: var(--accent-teal-dim); color: var(--accent-teal); }
+    .agent-card.error .agent-num { background: var(--accent-amber-dim); color: var(--accent-amber); }
+    .agent-card.discovery .agent-num { background: var(--accent-indigo-dim); color: var(--accent-indigo); }
+
+    .agent-title { font-size: 1.3rem; font-weight: 700; }
+    .agent-subtitle { font-size: 0.85rem; color: var(--text-muted); }
+    .agent-body { color: var(--text-secondary); font-size: 0.92rem; line-height: 1.9; }
+    .agent-body h4 { color: var(--text-primary); font-weight: 600; margin: 1.5rem 0 0.5rem; font-size: 0.95rem; }
+    .agent-body ul { padding-left: 1.25rem; }
+    .agent-body li { margin-bottom: 0.35rem; }
+
+    .flow-steps {
+      display: flex; flex-direction: column; gap: 0.5rem;
+      background: var(--bg-secondary); border-radius: 12px;
+      padding: 1.5rem; margin: 1rem 0;
+      border: 1px solid var(--border);
+    }
+    .flow-step {
+      display: flex; align-items: flex-start; gap: 0.75rem;
+    }
+    .flow-step-num {
+      flex-shrink: 0;
+      width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 8px; font-size: 0.7rem; font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      background: var(--accent-teal-dim); color: var(--accent-teal);
+    }
+    .flow-step-text { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; }
+
+    /* ===== TOOL TABLE ===== */
+    .tool-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      font-size: 0.85rem;
+      margin: 1.5rem 0;
+    }
+    .tool-table th {
+      padding: 0.75rem 1rem; text-align: left; font-weight: 600;
+      background: var(--bg-card); color: var(--text-secondary);
+      border-bottom: 1px solid var(--border); font-size: 0.78rem;
+    }
+    .tool-table td {
+      padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);
+      vertical-align: top; line-height: 1.6;
+    }
+    .tool-table tr:last-child td { border-bottom: none; }
+    .tool-table code {
+      font-family: 'Inter', monospace; font-size: 0.8rem;
+      background: var(--accent-teal-dim); color: var(--accent-teal);
+      padding: 0.15rem 0.4rem; border-radius: 4px;
+    }
+
+    /* ===== DATA MODEL ===== */
+    .model-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .model-card h4 {
+      font-size: 0.95rem; font-weight: 700; margin-bottom: 0.75rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .model-tag {
+      font-size: 0.65rem; font-weight: 600;
+      padding: 0.15rem 0.5rem; border-radius: 4px;
+      letter-spacing: 0.05em;
+    }
+    .model-tag.new { background: var(--accent-teal-dim); color: var(--accent-teal); }
+    .model-tag.ext { background: var(--accent-amber-dim); color: var(--accent-amber); }
+    .model-attrs {
+      font-size: 0.82rem; color: var(--text-secondary);
+      line-height: 1.8;
+    }
+    .model-attrs code {
+      font-family: 'Inter', monospace;
+      background: rgba(255,255,255,0.05);
+      padding: 0.1rem 0.35rem; border-radius: 3px;
+      font-size: 0.78rem;
+    }
+
+    /* ===== TIMELINE ===== */
+    .timeline { position: relative; padding-left: 2rem; }
+    .timeline::before {
+      content: '';
+      position: absolute; top: 0; bottom: 0; left: 10px;
+      width: 2px; background: var(--border);
+    }
+    .timeline-item {
+      position: relative; margin-bottom: 2rem; padding-left: 1.5rem;
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute; left: -1.55rem; top: 0.35rem;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--accent-teal);
+      border: 3px solid var(--bg-primary);
+    }
+    .timeline-item h4 { font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .timeline-item .duration {
+      font-size: 0.8rem; color: var(--accent-teal);
+      font-weight: 600; margin-bottom: 0.5rem;
+    }
+    .timeline-item p { font-size: 0.88rem; color: var(--text-secondary); }
+
+    /* ===== RISK ===== */
+    .risk-item {
+      padding: 1.25rem 1.5rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 0.75rem;
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.8;
+      display: flex; align-items: flex-start; gap: 0.75rem;
+    }
+    .risk-dot {
+      flex-shrink: 0; width: 8px; height: 8px;
+      border-radius: 50%; margin-top: 0.5rem;
+    }
+    .risk-dot.high { background: var(--accent-rose); }
+    .risk-dot.mid { background: var(--accent-amber); }
+    .risk-dot.low { background: var(--accent-sky); }
+
+    /* ===== FOOTER ===== */
+    footer {
+      text-align: center;
+      padding: 4rem 2rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    /* ===== DIVIDER ===== */
+    .divider {
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--border-accent), transparent);
+      margin: 4rem 0;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      nav .nav-links { display: none; }
+      .hero { padding: 7rem 1.5rem 4rem; }
+      .hero-stats { gap: 2rem; }
+      section { padding: 4rem 1.5rem; }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .arch-branches { flex-direction: column; align-items: center; }
+    /* ===== PRINT (PDF OUTPUT) ===== */
+    @media print {
+      body {
+        background: white;
+        color: black;
+      }
+      nav, footer, .divider {
+        display: none !important;
+      }
+      .hero {
+        padding: 2rem 0;
+        background: none;
+        color: black;
+      }
+      .hero-stats {
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+      .stat-card {
+        background: none;
+        border: 1px solid #ccc;
+        box-shadow: none;
+        color: black;
+      }
+      .stat-card .stat-value {
+        color: black;
+      }
+      section {
+        padding: 2rem 0;
+        page-break-inside: avoid;
+      }
+      .section-label {
+        color: #666;
+        border-color: #666;
+      }
+      .section-title, .section-desc {
+        color: black;
+      }
+      .card {
+        background: none;
+        border: 1px solid #ccc;
+        box-shadow: none;
+        color: black;
+        page-break-inside: avoid;
+      }
+      .card h3, .card h4 {
+        color: black;
+      }
+      .card p {
+        color: #333;
+      }
+      .badge, .model-attrs code {
+        border: 1px solid #ccc;
+        color: black;
+      }
+      .timeline-item::before {
+        border-color: white;
+      }
+      .risk-item {
+        background: none;
+        border: 1px solid #ccc;
+        color: black;
+      }
+      table {
+        border-collapse: collapse;
+      }
+      th, td {
+        border: 1px solid #ccc;
+        color: black !important;
+        background: none !important;
+      }
+      th {
+        font-weight: bold;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== NAVIGATION ===== -->
+<nav>
+  <div class="nav-inner">
+    <div class="logo">Community Synergy Platform</div>
+    <ul class="nav-links">
+      <li><a href="#purpose">目的</a></li>
+      <li><a href="#hypothesis">仮説</a></li>
+      <li><a href="#scope">スコープ</a></li>
+      <li><a href="#architecture">構成</a></li>
+      <li><a href="#snshub">投稿ハブ</a></li>
+      <li><a href="#graph">グラフ</a></li>
+      <li><a href="#agents">エージェント</a></li>
+      <li><a href="#data">データ</a></li>
+      <li><a href="#schedule">計画</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ===== HERO ===== -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">MVP — Minimum Viable Product</div>
+    <h1>コミュニティの<em>相乗効果</em>を<br>AIで可視化する</h1>
+    <p>
+      コミュニティ内に散在する文脈（As-Is / To-Be）や人物・プロジェクトの相関をネットワークグラフで自動生成し、
+      これまで気づけなかった相乗効果を発見するプラットフォーム。
+      3つの自律エージェントがグラフの鮮度・正確性・網羅性を24時間維持します。
+    </p>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="num">8</div><div class="label">検証仮説</div></div>
+      <div class="hero-stat"><div class="num">3</div><div class="label">自律エージェント</div></div>
+      <div class="hero-stat"><div class="num">4</div><div class="label">データモデル</div></div>
+      <div class="hero-stat"><div class="num">11</div><div class="label">週間で検証</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PURPOSE ===== -->
+<section id="purpose">
+  <div class="container">
+    <div class="section-label">Section 01</div>
+    <h2 class="section-title">MVPの目的</h2>
+    <p class="section-desc">
+      企画書の構想の価値核心は「コミュニティ内に散在する文脈や人物・プロジェクトの相関を可視化し、これまで気づけなかった相乗効果が見えてくる」という一点に集約できます。
+      MVPでは周辺機能を思い切って削ぎ落とし、<strong>テキストや画像からLLMを用いて相関図を自動生成し、直感的に関係性を把握・編集できるか</strong>という核心機能の実証を目的とします。
+    </p>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-icon" style="background: var(--accent-teal-dim); color: var(--accent-teal);">🎯</div>
+        <h3>核心仮説の検証</h3>
+        <p>「相乗効果は見つかるのか」「メンバーは使うのか」— この2つの核心仮説を最小コストで検証します。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background: var(--accent-indigo-dim); color: var(--accent-indigo);">🤖</div>
+        <h3>AIによる自動抽出</h3>
+        <p>Gemini 2.5 Flashのマルチモーダル機能で、テキストと画像から人物・プロジェクト・組織の関係性を自動抽出します。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background: var(--accent-amber-dim); color: var(--accent-amber);">🔄</div>
+        <h3>自律メンテナンス</h3>
+        <p>3つの専門エージェントがグラフの鮮度・正確性・網羅性を継続的に維持し、人手のメンテナンス負荷を削減します。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== HYPOTHESIS ===== -->
+<section id="hypothesis">
+  <div class="container">
+    <div class="section-label">Section 02</div>
+    <h2 class="section-title">検証する仮説と成功基準</h2>
+    <p class="section-desc">
+      いずれか一つでも崩れる場合はコンセプトの再検討が必要です。H1〜H2は「使われるか」、H3は「検出できるか」、H4は「役に立つか」、H5は「受け入れられるか」、H6は「文脈を活かせるか」、H7〜H8は「見やすく伝わるか」を検証します。
+    </p>
+
+    <table class="hypo-table">
+      <thead><tr><th>ID</th><th>仮説</th><th>成功基準</th></tr></thead>
+      <tbody>
+        <tr><td><span class="hypo-id">H1</span></td><td>一元化する場を用意すると、記録・発信量が維持または増加する</td><td>週次記録数が導入前と同等以上</td></tr>
+        <tr><td><span class="hypo-id">H1b</span></td><td>マルチSNS配信により投稿の手間が削減される</td><td>配信成功率90%以上、「手間が減った」回答が過半数</td></tr>
+        <tr><td><span class="hypo-id">H2</span></td><td>開示レベルの段階設計が記録のハードルを下げる</td><td>30%以上が非公開→共有の切替行動を見せる</td></tr>
+        <tr><td><span class="hypo-id">H3</span></td><td>AIが意味のある相乗効果候補を検出できる</td><td>候補の50%以上が「参考になった」と評価</td></tr>
+        <tr><td><span class="hypo-id">H4</span></td><td>検出された候補が実際の接触・協業のきっかけになる</td><td>接触・会話が最低1件以上発生</td></tr>
+        <tr><td><span class="hypo-id">H5</span></td><td>メンバーが監視されている感覚を持たない</td><td>「監視されていると感じる」回答が20%未満</td></tr>
+        <tr><td><span class="hypo-id">H6</span></td><td>議事録コンテキストでAIの精度・納得感が上がる</td><td>「議事録を渡した方が的確」回答が過半数</td></tr>
+        <tr><td><span class="hypo-id">H7</span></td><td>配色・レイアウトのカスタマイズが読みやすさ・継続利用を高める</td><td>「見やすい」回答が過半数、30%以上がスタイル変更を利用</td></tr>
+        <tr><td><span class="hypo-id">H8</span></td><td>可読性向上策により初見ユーザーが短時間で理解できる</td><td>「短時間で把握できた」回答が過半数、主観評価平均4以上</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== SCOPE ===== -->
+<section id="scope">
+  <div class="container">
+    <div class="section-label">Section 03</div>
+    <h2 class="section-title">MVPスコープ</h2>
+    <p class="section-desc">核心仮説の検証に必要なものだけを含め、それ以外は思い切って削ぎ落とします。</p>
+
+    <div class="grid-2">
+      <div class="card" style="border-color: rgba(20,184,166,0.2);">
+        <h3 style="color: var(--accent-teal);">✓ 含めるもの（IN）</h3>
+        <p>
+          • コンテキスト入力（テキスト / 画像ペースト）<br>
+          • Geminiによるエンティティ自動抽出（マルチモーダル）<br>
+          • インタラクティブなネットワークグラフ<br>
+          • エンティティ種別の視覚コーディングと凡例<br>
+          • 重要度に応じたノードサイズ・リンク太さ<br>
+          • ズーム・パン・検索によるフォーカス<br>
+          • ホバー時のプレビュー表示（ツールチップ）<br>
+          • 配色テーマ / レイアウトのプリセット切り替え<br>
+          • エンティティエディタ（リネーム・削除）<br>
+          • 招待制ログイン（JWT認証）<br>
+          • 3つの自律メンテナンスエージェント
+        </p>
+      </div>
+      <div class="card" style="border-color: rgba(244,63,94,0.2);">
+        <h3 style="color: var(--accent-rose);">✗ 含めないもの（OUT）</h3>
+        <p>
+          • ボイスメモ・音声認識<br>
+          • Hermesの高度な心理的安全性ガードレール<br>
+          • 匿名化パイプラインの本格実装<br>
+          • Slack / Discord等の外部チャット連携<br>
+          • 複数コミュニティ対応・権限の細分化<br>
+          • NotebookLM等とのAPI自動連携<br>
+          • 議事録の自動要約・自動分類<br>
+          • 完全自由なグラフスタイルエディタ<br>
+          • ノード・クラスタの自動折りたたみ
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== ARCHITECTURE ===== -->
+<section id="architecture">
+  <div class="container">
+    <div class="section-label">Section 04</div>
+    <h2 class="section-title">システム構成</h2>
+    <p class="section-desc">ユーザー入力 → AI抽出 → DB蓄積 → グラフ描画の基本フロー上に、自律エージェント層を重ねた構成です。</p>
+
+    <div class="arch-diagram">
+      <div class="arch-flow">
+        <div class="arch-node">
+          <h4>👤 オーナー / メンバー</h4>
+          <p>コンテキスト入力（テキスト / 画像ペースト）</p>
+        </div>
+        <div class="arch-arrow"></div>
+        <div class="arch-node highlight">
+          <h4>🤖 Gemini 2.5 Flash API</h4>
+          <p>マルチモーダル抽出 → 人物・プロジェクトの関係性をJSON配列で抽出</p>
+        </div>
+        <div class="arch-arrow"></div>
+        <div class="arch-node">
+          <h4>🗄 Database (SQLite / SQLAlchemy)</h4>
+          <p>Context, Entity, GraphPreference, AgentProposal</p>
+        </div>
+        <div class="arch-arrow"></div>
+        <div class="arch-node highlight">
+          <h4>🖥 Frontend (Next.js + React Force Graph 2D)</h4>
+          <p>相関図描画 / スタイル設定 / Entity Editor / 提案レビューUI</p>
+        </div>
+
+        <div style="margin-top: 2rem; width: 100%;">
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem; letter-spacing: 0.05em; font-weight: 600;">AUTONOMOUS AGENT LAYER</div>
+          <div class="arch-branches">
+            <div class="arch-node agent">
+              <h4>⏰ Agent 1</h4>
+              <p>日時解決</p>
+            </div>
+            <div class="arch-node agent">
+              <h4>🔧 Agent 2</h4>
+              <p>矛盾修正</p>
+            </div>
+            <div class="arch-node agent">
+              <h4>🔍 Agent 3</h4>
+              <p>情報収集</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top: 2rem;">
+      <div class="card">
+        <h3>技術スタック</h3>
+        <p>
+          <strong>Frontend:</strong> Next.js (App Router), React, TailwindCSS, react-force-graph-2d, d3-force<br>
+          <strong>Backend:</strong> FastAPI (Python)<br>
+          <strong>Database:</strong> SQLite / SQLAlchemy<br>
+          <strong>AI:</strong> Google Gemini 2.5 Flash API<br>
+          <strong>Auth:</strong> JWTベースのアクセストークン認証
+        </p>
+      </div>
+      <div class="card">
+        <h3>パイロット規模</h3>
+        <p>
+          <strong>対象:</strong> 小規模コミュニティ（10〜30名）×1<br>
+          <strong>役割:</strong> オーナー 1〜2名、メンバー 数名〜数十名<br>
+          <strong>期間:</strong> 構築6〜9週 + 運用4週 + 振り返り1〜2週<br>
+          <strong>体制:</strong> エンジニア1〜2名
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== SNS HUB ===== -->
+<section id="snshub">
+  <div class="container">
+    <div class="section-label">Section 05</div>
+    <h2 class="section-title">SNS投稿ハブと自己開示レベル</h2>
+    <p class="section-desc">外部SNSへの発信を一元化しつつ、発信前の情報を整理し、「公開範囲」を本人が選択できるインターフェースです。</p>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>自己開示レベル（Lv0〜Lv3）</h3>
+        <p style="margin-top: 0.75rem;">
+          <strong>Lv0: プライベート</strong> — 本人のみ。AI分析対象外。<br>
+          <strong>Lv1: AI分析のみ（匿名）</strong> — 誰にも表示されず、匿名シグナルとして相乗効果検出に活用。<br>
+          <strong>Lv2: コミュニティ共有</strong> — クローズドな空間でメンバーに公開。具体的な相乗効果候補として提示。<br>
+          <strong>Lv3: 外部SNS公開</strong> — Postiz等を通じて外部発信。
+        </p>
+      </div>
+      <div class="card">
+        <h3>入力形式とツール選定</h3>
+        <p style="margin-top: 0.75rem;">
+          <strong>テキスト / ボイスメモ:</strong> 思いついた瞬間にテキストや音声でメモを残し、後から公開範囲を落ち着いて選べます。<br>
+          <strong>基盤ツール:</strong> OSSの「Postiz」を最有力候補とし、予約投稿・API連携機能などの基盤を流用しつつ、メモ機能やLv0〜Lv3の選択UIを独自拡張するハイブリッド構成とします。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== GRAPH FEATURES ===== -->
+<section id="graph">
+  <div class="container">
+    <div class="section-label">Section 06</div>
+    <h2 class="section-title">ネットワークグラフの可視化機能</h2>
+    <p class="section-desc">抽出された関係性をインタラクティブに可視化し、初見ユーザーでも直感的に相関を理解できるグラフ体験を提供します。</p>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-icon" style="background: var(--accent-teal-dim); color: var(--accent-teal);">🎨</div>
+        <h3>スタイルカスタマイズ</h3>
+        <p>配色テーマ（ダーク / ライト / カラフル）とレイアウト（放射状 / 力学 / 階層型）をプリセットから選択。設定はユーザーごとにDBに保存。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background: var(--accent-indigo-dim); color: var(--accent-indigo);">🔷</div>
+        <h3>エンティティ種別の視覚コーディング</h3>
+        <p>人物=丸、プロジェクト=四角、組織=ひし形。形状と色を種別ごとに固定し、常時凡例（Legend）を表示。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background: var(--accent-amber-dim); color: var(--accent-amber);">📏</div>
+        <h3>重要度に応じたサイズ</h3>
+        <p>つながりの数（次数）に応じてノードサイズを動的に変更。コミュニティのハブとなる人物・プロジェクトが一目で分かる。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background: var(--accent-sky-dim); color: var(--accent-sky);">🔍</div>
+        <h3>検索・ズーム・パン</h3>
+        <p>検索ボックスにノード名を入力すると自動フォーカス。「Fit to Screen」で全体表示に戻る。マウスホイールでズーム。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background: var(--accent-rose-dim); color: var(--accent-rose);">💬</div>
+        <h3>ツールチップ & ジャンプ</h3>
+        <p>ノードにホバーで名前・種別・つながり数と文脈スニペットを表示。コンテキスト本文中の人名をクリックするとグラフ上の該当ノードにジャンプ。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background: var(--accent-teal-dim); color: var(--accent-teal);">⚡</div>
+        <h3>LOD & 安定化</h3>
+        <p>ズームアウト時はラベルを間引き、密集による文字の読みにくさを防止。力学モデルのアニメーションは自動で安定化。</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 2rem;">
+      <h3>リンクの種類</h3>
+      <p style="margin-top: 0.5rem;">
+        <span style="display:inline-block; width:12px; height:3px; background: var(--accent-teal); border-radius: 2px; vertical-align: middle; margin-right: 0.5rem;"></span>
+        <strong>actual（実線）</strong> — 実際にコラボレーション・所属関係がある<br>
+        <span style="display:inline-block; width:12px; height:3px; background: var(--accent-indigo); border-radius: 2px; vertical-align: middle; margin-right: 0.5rem; border: 1px dashed var(--accent-indigo);"></span>
+        <strong>potential（疑似リンク）</strong> — 意味的に近い（共鳴）が明確なコラボ履歴はない<br>
+        <span style="display:inline-block; width:12px; height:3px; background: var(--accent-amber); border-radius: 2px; vertical-align: middle; margin-right: 0.5rem;"></span>
+        <strong>bridge（橋渡し）</strong> — ある人物が別の人物・プロジェクトを紹介・連結した
+      </p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== AGENTS ===== -->
+<section id="agents">
+  <div class="container">
+    <div class="section-label">Section 07</div>
+    <h2 class="section-title">自律メンテナンスエージェント（Hermes 基盤）</h2>
+    <p class="section-desc">
+      ネットワークグラフは時間とともに鮮度が劣化し、矛盾が蓄積し、網羅性が低下します。
+      将来的なコミュニティAI「Hermes」の実現に向けて、その基盤となる3つの専門サブエージェントがこれらの課題を自律的に解決し、オーナーの承認フローで安全性を担保します。
+    </p>
+
+    <div class="card" style="margin-bottom: 2rem;">
+      <h3>Hermesとしての設計原則</h3>
+      <ul style="margin-top: 0.5rem;">
+        <li><strong>発見支援型:</strong> 評価・監視ではなく、情報を正確・最新に保つための支援。</li>
+        <li><strong>対象者への透明性:</strong> 人物に対する変更提案（<code>affects_person_id</code>）は、オーナー承認とは別に対象本人にも通知。</li>
+        <li><strong>人間の最終判断:</strong> 提案は原則すべてオーナー承認を経る（日時解決の明示的日付のみ自動適用）。</li>
+        <li><strong>同意に基づく情報収集:</strong> 人物エンティティに対する外部情報収集は、本人が同意（<code>external_enrichment_opt_in</code>）した場合のみ。</li>
+      </ul>
+    </div>
+
+    <div class="card" style="margin-bottom: 2rem; border-color: var(--accent-indigo);">
+      <h3>文章のトリプル化（Triple抽出基盤）</h3>
+      <p style="margin-top: 0.5rem;">
+        コンテキストを <strong>(主語, 述語, 目的語)</strong> の「トリプル」に分解し、事実ごとに独立して管理します。<br>
+        これにより、日時解決の粒度向上、矛盾検出の機械的・高精度化、重複検出の強化を実現し、グラフのリンクにも述語（例：「所属」「登壇」）をラベル表示可能になります。
+      </p>
+    </div>
+
+    <!-- Agent 1 -->
+    <div class="agent-card time">
+      <div class="agent-header">
+        <div class="agent-num">1</div>
+        <div>
+          <div class="agent-title">日時解決エージェント</div>
+          <div class="agent-subtitle">Time Resolver — 毎日 02:00 + コンテキスト登録時</div>
+        </div>
+      </div>
+      <div class="agent-body">
+        <p>全ての情報（コンテキストの要素）に<strong>情報日時・更新日時・改版</strong>が存在することを保証します。</p>
+
+        <h4>処理フロー</h4>
+        <div class="flow-steps">
+          <div class="flow-step"><div class="flow-step-num">1</div><div class="flow-step-text"><code>info_date</code> が NULL のコンテキストを取得</div></div>
+          <div class="flow-step"><div class="flow-step-num">2</div><div class="flow-step-text">テキスト本文から日付表現を抽出（「2026年8月25日」「August 25 at 8:32 AM」「先週の月曜日」等）</div></div>
+          <div class="flow-step"><div class="flow-step-num">3</div><div class="flow-step-text">見つかった → <code>info_date_source = "explicit"</code> で自動適用（confidence ≥ 0.95）</div></div>
+          <div class="flow-step"><div class="flow-step-num">4</div><div class="flow-step-text">見つからない → <code>resource_url</code> の記事から日付取得を試行</div></div>
+          <div class="flow-step"><div class="flow-step-num">5</div><div class="flow-step-text">それでも不明 → 前後のコンテキストから推定（<code>info_date_source = "inferred"</code>、オーナー承認待ち）</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent 2 -->
+    <div class="agent-card error">
+      <div class="agent-header">
+        <div class="agent-num">2</div>
+        <div>
+          <div class="agent-title">矛盾修正エージェント</div>
+          <div class="agent-subtitle">Error Corrector — 毎日 03:00</div>
+        </div>
+      </div>
+      <div class="agent-body">
+        <p>ノード情報やリンクに含まれる<strong>矛盾・誤り</strong>を検出し、正しい情報に修正する提案を行います。全ての変更はオーナー承認が必要です。</p>
+
+        <h4>検出対象</h4>
+        <ul>
+          <li><strong>表記揺れ:</strong> 「長谷川 秀夫」⇔「長谷川秀夫」（スペース揺れ）、「東京大学」⇔「東大」（略称）、日英表記の揺れなど</li>
+          <li><strong>属性の矛盾:</strong> Triple情報を用い、<code>(主語, 述語)</code> が一致し <code>目的語</code> が異なる組を機械抽出。時系列で新しい方を正とするかLLM判定へ。</li>
+          <li><strong>誤リンク:</strong> 文脈上リンクすべきでないペアを検出し、削除または正しいターゲットへの再リンクを提案。</li>
+        </ul>
+        <div style="margin-top: 1rem; font-size: 0.85rem; color: var(--accent-amber);">
+          ※ 対象が人物エンティティの場合、本人への通知（<code>affects_person_id</code>）を設定
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent 3 -->
+    <div class="agent-card discovery">
+      <div class="agent-header">
+        <div class="agent-num">3</div>
+        <div>
+          <div class="agent-title">情報収集エージェント</div>
+          <div class="agent-subtitle">Discovery Crawler — 毎日 04:00</div>
+        </div>
+      </div>
+      <div class="agent-body">
+        <p>登録済みのプロジェクト・組織・<strong>同意済みの人物</strong>について<strong>デイリーで公開情報を収集</strong>し、新しい情報があればコンテキストとして追加提案します。</p>
+
+        <div style="margin-bottom: 1rem; padding: 0.75rem; background: rgba(245, 158, 11, 0.1); border-left: 3px solid var(--accent-amber); border-radius: 4px; font-size: 0.85rem;">
+          <strong>対象範囲の制約（オプトイン）:</strong><br>
+          人物（person）は本人が <code>external_enrichment_opt_in = true</code> と設定した場合のみ収集対象。
+        </div>
+
+        <h4>処理フロー</h4>
+        <div class="flow-steps">
+          <div class="flow-step"><div class="flow-step-num">1</div><div class="flow-step-text">対象 Entity を重要度（degree）順に取得</div></div>
+          <div class="flow-step"><div class="flow-step-num">2</div><div class="flow-step-text">各エンティティについてWeb検索実行（直近7日以内、1日最大100クエリ）</div></div>
+          <div class="flow-step"><div class="flow-step-num">3</div><div class="flow-step-text">既存URLとの重複チェック ＋ 既存Triple内容との重複除外 → 新記事取得</div></div>
+          <div class="flow-step"><div class="flow-step-num">4</div><div class="flow-step-text">LLMで関連度を判定（スコア ≥ 0.6 で新規コンテキスト追加提案 → 承認待ち）</div></div>
+        </div>
+
+        <h4>収集の優先度</h4>
+        <table class="tool-table">
+          <thead><tr><th>優先度</th><th>対象</th><th>頻度</th></tr></thead>
+          <tbody>
+            <tr><td><strong>高</strong></td><td>degree が高いエンティティ（ハブノード）</td><td>毎日</td></tr>
+            <tr><td><strong>中</strong></td><td>直近30日以内に追加/更新されたエンティティ</td><td>毎日</td></tr>
+            <tr><td><strong>低</strong></td><td>last_verified_at が30日以上前のエンティティ</td><td>週1回</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Approval Flow -->
+    <div class="card" style="margin-top: 1rem;">
+      <h3>承認フロー</h3>
+      <p style="margin-top: 0.75rem;">
+        全てのエージェント提案は <code>agent_proposals</code> テーブルに記録され、ダッシュボード上の「Agent Proposals」パネルでオーナーがレビュー・承認/却下できます。
+      </p>
+      <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: 10px; font-size: 0.85rem; line-height: 2; color: var(--text-secondary);">
+        <strong style="color: var(--text-primary);">自動適用の基準（安全側に寄せる）</strong><br>
+        ✅ 日時解決 — テキスト中に明示的な日付がある場合の <code>info_date</code> 設定のみ<br>
+        ❌ 矛盾修正 — 全て人間承認が必要<br>
+        ❌ 情報収集 — 全て人間承認が必要
+      </div>
+    </div>
+
+    <!-- Tools -->
+    <div class="card" style="margin-top: 1rem;">
+      <h3>エージェント共通ツール</h3>
+      <table class="tool-table">
+        <thead><tr><th>ツール</th><th>説明</th></tr></thead>
+        <tbody>
+          <tr><td><code>db_query_contexts</code></td><td>コンテキスト一覧の取得（フィルタ付き）</td></tr>
+          <tr><td><code>db_query_entities</code></td><td>エンティティ一覧の取得</td></tr>
+          <tr><td><code>db_create_proposal</code></td><td>変更提案を作成</td></tr>
+          <tr><td><code>llm_analyze</code></td><td>Gemini APIにテキストを送信して分析結果を取得</td></tr>
+          <tr><td><code>web_search</code></td><td>Web検索を実行（1日最大100クエリ）</td></tr>
+          <tr><td><code>web_scrape</code></td><td>URLからテキスト内容を取得</td></tr>
+          <tr><td><code>date_extract</code></td><td>自然言語の日付表現をISO 8601形式に変換</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== DATA MODEL ===== -->
+<section id="data">
+  <div class="container">
+    <div class="section-label">Section 08</div>
+    <h2 class="section-title">データモデル</h2>
+    <p class="section-desc">MVPで利用する主要データモデル。エージェント導入に伴い、既存テーブルへのカラム追加と新規テーブルを含みます。</p>
+
+    <div class="grid-2">
+      <div class="model-card">
+        <h4>User（ユーザー）</h4>
+        <div class="model-attrs">
+          <code>id</code>, <code>email</code>, <code>hashed_password</code>, <code>is_active</code>, <code>role</code>
+        </div>
+      </div>
+
+      <div class="model-card">
+        <h4>Context（コンテキスト）<span class="model-tag ext">拡張</span></h4>
+        <div class="model-attrs">
+          <code>id</code>, <code>owner_id</code>, <code>body</code>, <code>context_type</code> (asis/tobe), <code>resource_url</code>, <code>extracted_entities</code> (JSON), <code>created_at</code>, <code>updated_at</code><br>
+          <strong style="color: var(--accent-amber);">+ 追加:</strong>
+          <code>info_date</code>, <code>info_date_source</code>, <code>revision</code>, <code>source_agent</code>
+        </div>
+      </div>
+
+      <div class="model-card">
+        <h4>Entity（正規化エンティティ）<span class="model-tag ext">拡張</span></h4>
+        <div class="model-attrs">
+          <code>id</code>, <code>name</code>, <code>entity_type</code> (person/project/organization), <code>degree</code>, <code>merged_into_id</code><br>
+          <strong style="color: var(--accent-amber);">+ 追加:</strong>
+          <code>last_verified_at</code>, <code>info_date</code>, <code>confidence</code>, <code>external_enrichment_opt_in</code> (外部情報収集同意)
+        </div>
+      </div>
+
+      <div class="model-card">
+        <h4>Triple（トリプル）<span class="model-tag new">NEW</span></h4>
+        <div class="model-attrs">
+          <code>id</code>, <code>context_id</code>, <code>subject_entity_id</code>, <code>predicate</code> (述語), <code>object_entity_id</code>, <code>object_literal</code>, <code>info_date</code>, <code>confidence</code>, <code>source_agent</code>, <code>revision</code>
+        </div>
+      </div>
+
+      <div class="model-card">
+        <h4>GraphPreference（表示設定）</h4>
+        <div class="model-attrs">
+          <code>id</code>, <code>user_id</code>, <code>theme</code> (配色テーマ), <code>layout_type</code> (レイアウト), <code>updated_at</code>
+        </div>
+      </div>
+
+      <div class="model-card" style="grid-column: 1 / -1;">
+        <h4>AgentProposal（エージェント提案）<span class="model-tag new">NEW</span></h4>
+        <div class="model-attrs">
+          <code>id</code>, <code>agent_type</code>, <code>proposal_type</code>, <code>target_entity_id</code>, <code>target_context_id</code>, <code>affects_person_id</code> (本人通知用), <code>current_value</code> (JSON), <code>proposed_value</code> (JSON), <code>reasoning</code>, <code>evidence_urls</code> (JSON配列), <code>status</code> (pending/approved/rejected/auto_applied), <code>created_at</code>, <code>reviewed_at</code>, <code>reviewed_by</code>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== SCHEDULE ===== -->
+<section id="schedule">
+  <div class="container">
+    <div class="section-label">Section 09</div>
+    <h2 class="section-title">スケジュールとロードマップ</h2>
+    <p class="section-desc">MVP構築から仮説検証までの全体スケジュールと、検証結果に基づくフェーズ2への展開判断を示します。</p>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <h4>Phase 1 — MVP構築</h4>
+        <div class="duration">6〜9週間</div>
+        <p>コンテキスト入力 / AI抽出 / グラフ可視化 / スタイルカスタマイズ / エンティティエディタ / エージェント基盤 / JWT認証の実装。</p>
+      </div>
+      <div class="timeline-item">
+        <h4>Phase 2 — パイロット運用</h4>
+        <div class="duration">4週間</div>
+        <p>パイロットコミュニティ（10〜30名）での実データ蓄積・観察。エージェントの提案精度と承認率を計測。</p>
+      </div>
+      <div class="timeline-item">
+        <h4>Phase 3 — 振り返り・仮説検証</h4>
+        <div class="duration">1〜2週間</div>
+        <p>H1〜H8の成功基準との照合。定量指標 + 定性アンケート。MVP後の展開判断。</p>
+      </div>
+      <div class="timeline-item">
+        <h4>Phase 4以降 — 展開</h4>
+        <div class="duration">仮説検証後</div>
+        <p>成功時: 自己開示レベルのフル実装、自律エージェント群を統合したコミュニティAI「Hermes」の本格稼働、NotebookLM Enterprise連携、レポート生成エージェント、マッチングエージェントの追加。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== RISKS ===== -->
+<section>
+  <div class="container">
+    <div class="section-label">Section 10</div>
+    <h2 class="section-title">リスクと限定事項</h2>
+    <p class="section-desc">MVPフェーズで認識している主要リスク。</p>
+
+    <div class="risk-item"><div class="risk-dot high"></div>パイロット規模が小さく、統計的に有意な検証は難しい可能性がある。定性的なヒアリング・アンケートも重視する。</div>
+    <div class="risk-item"><div class="risk-dot high"></div>議事録・コンテキストの登録が手動に依存するため、オーナーの更新が滞るとAI提案の精度に影響する。→ 情報収集エージェントで部分的に補完。</div>
+    <div class="risk-item"><div class="risk-dot mid"></div>エンティティの種別分類や次数計算の精度が低いと、色分け・サイズ表現がかえって誤解を招く可能性がある。</div>
+    <div class="risk-item"><div class="risk-dot mid"></div>ノード数・エッジ数が増えるとラベルが密集して読みにくくなる可能性がある。LODとラベル回転で対応。</div>
+    <div class="risk-item"><div class="risk-dot mid"></div>エージェントのWeb検索・LLM呼び出しによるAPI費用の管理。レート制限（検索100件/日、LLM 200件/日）で制御。</div>
+    <div class="risk-item"><div class="risk-dot low"></div>NotebookLMは個人・Proプランでは API連携が提供されておらず、MVPではコピー＆ペーストによる簡易運用とする。</div>
+    <div class="risk-item"><div class="risk-dot low"></div>スタイルのプリセット数を絞りすぎると体験価値が薄れ、多すぎると実装コストが増える。まずは各2〜3種類から開始。</div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== SECURITY ===== -->
+<section>
+  <div class="container">
+    <div class="section-label">Section 11</div>
+    <h2 class="section-title">セキュリティとガードレール</h2>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>🔒 オーナー承認必須</h3>
+        <p>矛盾修正・情報収集エージェントの全ての変更提案はオーナー承認が必要。自動適用は日時解決の明示的日付のみ。</p>
+      </div>
+      <div class="card">
+        <h3>📊 レート制限</h3>
+        <p>Web検索 100件/日、LLM呼び出し 200件/日の上限を設定し、API費用の暴走を防止。</p>
+      </div>
+      <div class="card">
+        <h3>🔄 ロールバック</h3>
+        <p>revision による改版管理で、エージェントが行った任意の変更を取り消し可能。</p>
+      </div>
+      <div class="card">
+        <h3>🔍 透明性</h3>
+        <p>全ての変更に source_agent と reasoning を記録。なぜその変更が行われたかを完全に追跡可能。</p>
+      </div>
+      <div class="card">
+        <h3>🛡 プライバシー</h3>
+        <p>情報収集は公開情報（Webに公開された記事・プレスリリース）に限定。SNSの非公開投稿やクローズドな情報は対象外。</p>
+      </div>
+      <div class="card">
+        <h3>📋 監査ログ</h3>
+        <p>agent_runs テーブルで各エージェント実行のログ（開始/終了時刻、処理件数、エラー数）を記録。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer>
+  <p>コミュニティ活動可視化プラットフォーム — 統合企画書 v1.0</p>
+  <p style="margin-top: 0.5rem;">Generated: 2026-09-16 | MVP仕様書 + グラフスタイルカスタマイズ対応版 + エージェント仕様 統合</p>
+</footer>
+
+</body>
+</html>

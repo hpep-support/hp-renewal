@@ -10,10 +10,12 @@ class ContextBase(BaseModel):
     extracted_entities: Optional[str] = None
 
 class ContextCreate(ContextBase):
+    community_id: int
     image_base64: Optional[str] = None
 
 class ContextResponse(ContextBase):
     id: int
+    community_id: int
     owner_id: int
     created_at: datetime
     updated_at: datetime

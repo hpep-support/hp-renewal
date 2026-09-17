@@ -14,7 +14,7 @@ from .upsert_helper import upsert_entities_from_json
 
 router = APIRouter()
 
-@router.post("/", response_model=ContextResponse)
+@router.post("", response_model=ContextResponse)
 def create_context(
     context_in: ContextCreate,
     db: Session = Depends(get_db),
@@ -23,6 +23,7 @@ def create_context(
     entities = extract_entities(context_in.body, context_in.image_base64)
     
     db_context = Context(
+        community_id=context_in.community_id,
         owner_id=current_user.id,
         body=context_in.body,
         context_type=context_in.context_type,
@@ -33,18 +34,17 @@ def create_context(
     db.commit()
     db.refresh(db_context)
     
-    upsert_entities_from_json(db, entities)
+    upsert_entities_from_json(db, entities, context_in.community_id)
     
     return db_context
 
-@router.get("/", response_model=List[ContextResponse])
+@router.get("", response_model=List[ContextResponse])
 def get_contexts(
+    community_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Depending on visibility rules, we might want everyone to see contexts or just the owner.
-    # For MVP, let's say anyone can read contexts (as it's a shared community)
-    contexts = db.query(Context).all()
+    contexts = db.query(Context).filter(Context.community_id == community_id).all()
     return contexts
 
 @router.put("/{context_id}", response_model=ContextResponse)
@@ -58,11 +58,9 @@ def update_context(
     if not db_context:
         raise HTTPException(status_code=404, detail="Context not found")
     
-    # For MVP, allow any member to edit to see the network update, 
-    # but normally we'd check owner_id.
-    
     entities = extract_entities(context_in.body, context_in.image_base64)
     
+    db_context.community_id = context_in.community_id
     db_context.body = context_in.body
     db_context.context_type = context_in.context_type
     db_context.resource_url = context_in.resource_url
@@ -71,7 +69,7 @@ def update_context(
     db.commit()
     db.refresh(db_context)
     
-    upsert_entities_from_json(db, entities)
+    upsert_entities_from_json(db, entities, context_in.community_id)
     
     return db_context
 
@@ -91,11 +89,15 @@ def delete_context(
 
 @router.put("/entities/rename", response_model=dict)
 def rename_entity(
+    community_id: int,
     rename_in: EntityRename,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    contexts = db.query(Context).filter(Context.extracted_entities.isnot(None)).all()
+    contexts = db.query(Context).filter(
+        Context.community_id == community_id,
+        Context.extracted_entities.isnot(None)
+    ).all()
     updated_count = 0
     
     for ctx in contexts:
@@ -122,11 +124,15 @@ def rename_entity(
 
 @router.delete("/entities/{entity_name}", response_model=dict)
 def delete_entity(
+    community_id: int,
     entity_name: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    contexts = db.query(Context).filter(Context.extracted_entities.isnot(None)).all()
+    contexts = db.query(Context).filter(
+        Context.community_id == community_id,
+        Context.extracted_entities.isnot(None)
+    ).all()
     updated_count = 0
     
     for ctx in contexts:

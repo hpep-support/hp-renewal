@@ -16,7 +16,7 @@ def background_sns_delivery(content: str):
     # Run the async postiz service from sync context
     asyncio.run(post_to_sns_via_postiz(content))
 
-@router.post("/", response_model=RecordResponse)
+@router.post("", response_model=RecordResponse)
 def create_record(
     record_in: RecordCreate,
     background_tasks: BackgroundTasks,
@@ -38,7 +38,7 @@ def create_record(
 
     return db_record
 
-@router.get("/", response_model=List[RecordResponse])
+@router.get("", response_model=List[RecordResponse])
 def get_records(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)

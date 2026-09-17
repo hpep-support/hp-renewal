@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>hermes-agent ベースのエージェント戦略 — HACH連携 vs 自社Hermes構築</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c111d;
+      --bg2: #131a2b;
+      --card: #1a2238;
+      --text: #e2e8f0;
+      --text2: #94a3b8;
+      --muted: #64748b;
+      --gold: #FDBD0A;
+      --gold-dim: rgba(253,189,10,0.12);
+      --teal: #14b8a6;
+      --teal-dim: rgba(20,184,166,0.12);
+      --indigo: #6366f1;
+      --indigo-dim: rgba(99,102,241,0.12);
+      --rose: #f43f5e;
+      --rose-dim: rgba(244,63,94,0.12);
+      --sky: #0ea5e9;
+      --amber: #f59e0b;
+      --border: rgba(148,163,184,0.1);
+      --radius: 14px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Noto Sans JP', 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.85; }
+    .container { max-width: 1020px; margin: 0 auto; padding: 0 2rem; }
+    a { color: var(--teal); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .header { padding: 4rem 2rem 3rem; text-align: center; border-bottom: 1px solid var(--border); }
+    .header .tag { display: inline-block; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.18em; color: var(--gold); border: 1px solid rgba(253,189,10,0.4); padding: 0.3rem 1rem; border-radius: 999px; margin-bottom: 1.2rem; }
+    .header h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 900; line-height: 1.3; margin-bottom: 1rem; }
+    .header p { color: var(--text2); max-width: 42em; margin: 0 auto; }
+
+    section { padding: 3.5rem 0; }
+    .section-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--teal); margin-bottom: 0.5rem; }
+    h2 { font-size: 1.6rem; font-weight: 900; margin-bottom: 1rem; }
+    h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .lead { color: var(--text2); margin-bottom: 1.5rem; max-width: 44em; }
+
+    table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.9rem; }
+    th, td { text-align: left; padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--text2); font-weight: 700; font-size: 0.82rem; white-space: nowrap; background: rgba(255,255,255,0.02); }
+    td { color: var(--text); }
+    thead th { background: var(--card); color: var(--text); font-size: 0.88rem; }
+    thead th:nth-child(2) { color: var(--gold); }
+    thead th:nth-child(3) { color: var(--teal); }
+    .check { color: #2dd4bf; font-weight: 700; }
+    .cross { color: var(--rose); }
+    .partial { color: var(--amber); }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1.5rem 0; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.2rem; margin: 1.5rem 0; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
+    .card h3 { font-size: 1.05rem; margin-bottom: 0.4rem; }
+    .card p { color: var(--text2); font-size: 0.9rem; }
+    .card-gold { border-color: rgba(253,189,10,0.3); }
+    .card-teal { border-color: rgba(20,184,166,0.3); }
+    .card-indigo { border-color: rgba(99,102,241,0.3); }
+
+    .badge { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.6rem; border-radius: 6px; margin-bottom: 0.5rem; }
+    .badge-gold { background: var(--gold-dim); color: var(--gold); }
+    .badge-teal { background: var(--teal-dim); color: var(--teal); }
+    .badge-indigo { background: var(--indigo-dim); color: var(--indigo); }
+    .badge-rose { background: var(--rose-dim); color: var(--rose); }
+
+    .verdict { background: linear-gradient(135deg, rgba(20,184,166,0.08), rgba(99,102,241,0.08)); border: 1px solid rgba(20,184,166,0.25); border-radius: var(--radius); padding: 2rem; margin: 2rem 0; }
+    .verdict h3 { font-size: 1.3rem; margin-bottom: 0.8rem; color: var(--teal); }
+    .verdict p { color: var(--text2); }
+    .verdict ul { margin: 1rem 0; padding-left: 1.2rem; }
+    .verdict li { margin-bottom: 0.6rem; font-size: 0.92rem; color: var(--text2); }
+
+    .foundation-box {
+      background: linear-gradient(135deg, rgba(253,189,10,0.06), rgba(99,102,241,0.06));
+      border: 2px solid rgba(253,189,10,0.3);
+      border-radius: var(--radius);
+      padding: 2rem;
+      margin: 2rem 0;
+      text-align: center;
+    }
+    .foundation-box h3 { font-size: 1.4rem; color: var(--gold); margin-bottom: 0.8rem; }
+    .foundation-box p { color: var(--text2); max-width: 36em; margin: 0 auto; }
+
+    .arch-diagram {
+      font-family: 'Inter', monospace;
+      font-size: 0.82rem;
+      line-height: 2;
+      color: var(--text2);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      overflow-x: auto;
+    }
+    .arch-diagram pre { white-space: pre; }
+
+    .divider { height: 1px; background: linear-gradient(to right, transparent, var(--border), transparent); margin: 0; }
+    footer { text-align: center; padding: 3rem 2rem; color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(--border); }
+
+    @media (max-width: 768px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      section { padding: 2.5rem 0; }
+    }
+    @media print {
+      body { background: #fff; color: #111; }
+      .card, .foundation-box, .arch-diagram, .verdict { border: 1px solid #ccc; background: none; }
+      .card p, td, .lead, .verdict p, .verdict li { color: #333; }
+      th { background: #f5f5f5 !important; color: #111 !important; }
+      thead th { color: #111 !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <span class="tag">INTERNAL REPORT v2</span>
+  <h1>hermes-agent を共通基盤とした<br>HACH連携 vs 自社Hermes構築の比較考察</h1>
+  <p>HACHもコミュニティAI「Hermes」も、NousResearchのオープンソースフレームワーク <a href="https://github.com/nousresearch/hermes-agent">hermes-agent</a> を共通基盤としている。<br>この前提を踏まえ、エージェント戦略の最適解を再考する。</p>
+</div>
+
+<div class="container">
+
+<!-- ===== 1. hermes-agent ===== -->
+<section>
+  <div class="section-label">01 — Common Foundation</div>
+  <h2>共通基盤：NousResearch hermes-agent</h2>
+
+  <div class="foundation-box">
+    <h3>☤ hermes-agent — "The agent that grows with you"</h3>
+    <p>NousResearchが開発したMITライセンスの自己改善型AIエージェントフレームワーク。<br>HACHもコミュニティAI「Hermes」も、このフレームワークの上に構築される。</p>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <span class="badge badge-gold">学習ループ</span>
+      <h3>自己改善メカニズム</h3>
+      <p>
+        複雑なタスクの後に自律的にスキルを生成・改善。<br>
+        FTS5セッション検索、LLM要約による<strong>クロスセッション記憶</strong>。<br>
+        Honcho による dialectic user modeling で、使うほどユーザーを深く理解。
+      </p>
+    </div>
+    <div class="card">
+      <span class="badge badge-teal">マルチプラットフォーム</span>
+      <h3>ゲートウェイ統合</h3>
+      <p>
+        <strong>Telegram / Discord / Slack / WhatsApp / Signal / CLI</strong> — 単一のゲートウェイプロセスから全プラットフォームへ接続。<br>
+        音声メモのトランスクリプション、プラットフォーム横断の会話継続。
+      </p>
+    </div>
+    <div class="card">
+      <span class="badge badge-indigo">スケジューラ</span>
+      <h3>自律実行 &amp; 並列化</h3>
+      <p>
+        Cronスケジューラ内蔵。自然言語で日次レポート、週次監査などを設定。<br>
+        サブエージェント生成による並列処理。<br>
+        Docker / SSH / Modal / Daytona / Vercel Sandbox で実行。
+      </p>
+    </div>
+  </div>
+
+  <p class="lead" style="margin-top: 1rem;">
+    <strong>重要な認識：</strong>hermes-agent はエージェントの「骨格」（学習ループ・ツール呼び出し・スケジューリング・マルチプラットフォーム接続）を提供するフレームワークであり、
+    その上に「何を目的としたエージェントを構築するか」がHACHと自社Hermesの分岐点となる。
+  </p>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== 2. 三層構造 ===== -->
+<section>
+  <div class="section-label">02 — Architecture Layers</div>
+  <h2>三層アーキテクチャの全体像</h2>
+  <p class="lead">hermes-agent を共通基盤として、HACH と自社 Hermes は異なるドメイン特化レイヤーを構築している。</p>
+
+  <div class="arch-diagram">
+<pre>
+┌───────────────────────────────────────────────────────────────┐
+│                    ドメイン特化レイヤー                         │
+│                                                               │
+│  ┌─── HACH ───────────────┐    ┌─── Hermes (Community AI) ──┐ │
+│  │ ・業務情報の自動収集     │    │ ・ネットワークグラフ構築    │ │
+│  │ ・日次ダッシュボード     │    │ ・相乗効果検知            │ │
+│  │ ・トリアージ(赤/黄/青)  │    │ ・自律メンテナンス        │ │
+│  │ ・brain（判断基準調整）  │    │   (日時解決/矛盾修正/    │ │
+│  │ ・BYOC セキュリティ     │    │    情報収集)              │ │
+│  │                         │    │ ・心理的安全性設計        │ │
+│  │  対象: 企業の業務効率化  │    │ ・承認フロー              │ │
+│  └─────────────────────────┘    │                            │ │
+│                                  │  対象: コミュニティ        │ │
+│                                  │        の関係性分析        │ │
+│                                  └────────────────────────────┘ │
+├───────────────────────────────────────────────────────────────┤
+│               hermes-agent 共通基盤レイヤー                    │
+│                                                               │
+│  ・自己改善学習ループ（スキル生成・改善・記憶）                 │
+│  ・マルチプラットフォームゲートウェイ                           │
+│    (Slack / Discord / Telegram / WhatsApp / Signal / CLI)     │
+│  ・Cronスケジューラ（自然言語で自律タスク設定）                 │
+│  ・サブエージェント並列処理                                    │
+│  ・ツール呼び出しフレームワーク                                │
+│  ・セッション記憶 / クロスセッション検索                       │
+│  ・Honcho User Modeling                                       │
+├───────────────────────────────────────────────────────────────┤
+│                    インフラストラクチャ                         │
+│                                                               │
+│  ・LLM プロバイダ (Nous Portal / OpenRouter / OpenAI / Gemini)│
+│  ・実行環境 (Docker / SSH / Modal / Daytona / VPS)            │
+│  ・データベース (SQLite / PostgreSQL)                          │
+└───────────────────────────────────────────────────────────────┘
+</pre>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== 3. 共通基盤の恩恵 ===== -->
+<section>
+  <div class="section-label">03 — Shared Capabilities</div>
+  <h2>hermes-agent 共通基盤がもたらす恩恵</h2>
+  <p class="lead">HACHと同じ基盤を使う場合、以下の機能は自作不要になる。エージェント仕様書で設計した機能の多くが、hermes-agent のネイティブ機能でカバーできる。</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>エージェント仕様の要件</th>
+        <th>hermes-agent のネイティブ機能</th>
+        <th>追加開発の要否</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th>定期バッチ実行<br>(毎日02:00, 03:00, 04:00)</th>
+        <td>Cronスケジューラ内蔵。自然言語でスケジュール設定可能。</td>
+        <td><span class="check">不要</span></td>
+      </tr>
+      <tr>
+        <th>チャットツール連携<br>(Slack / Discord等)</th>
+        <td>ゲートウェイ統合。Slack / Discord / Telegram / WhatsApp / Signal対応。</td>
+        <td><span class="check">不要</span></td>
+      </tr>
+      <tr>
+        <th>サブエージェント並列処理</th>
+        <td>サブエージェント生成による並列ワークストリーム。</td>
+        <td><span class="check">不要</span></td>
+      </tr>
+      <tr>
+        <th>学習・記憶・セッション管理</th>
+        <td>FTS5検索 + LLM要約。Honcho dialectic user modeling。</td>
+        <td><span class="check">不要</span></td>
+      </tr>
+      <tr>
+        <th>ツール（Web検索/スクレイプ/日付抽出）</th>
+        <td>ツール呼び出しフレームワーク。カスタムツール追加可能。</td>
+        <td><span class="partial">ツール定義のみ必要</span></td>
+      </tr>
+      <tr>
+        <th>ネットワークグラフ構築</th>
+        <td>該当なし（ドメイン特化機能）</td>
+        <td><span class="cross">自作が必要</span></td>
+      </tr>
+      <tr>
+        <th>相乗効果検知 / マッチング</th>
+        <td>該当なし（ドメイン特化機能）</td>
+        <td><span class="cross">自作が必要</span></td>
+      </tr>
+      <tr>
+        <th>承認フロー (agent_proposals)</th>
+        <td>該当なし（ドメイン特化機能）</td>
+        <td><span class="cross">自作が必要</span></td>
+      </tr>
+      <tr>
+        <th>心理的安全性設計 (Lv0〜Lv3)</th>
+        <td>該当なし（ドメイン特化機能）</td>
+        <td><span class="cross">自作が必要</span></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== 4. HACH vs 自社 ===== -->
+<section>
+  <div class="section-label">04 — HACH vs Self-Built</div>
+  <h2>HACHとの関係性の再定義</h2>
+  <p class="lead">hermes-agent が共通基盤である以上、HACHは「同じフレームワークの別インスタンス（ビジネス特化）」と捉えるのが正確。競合ではなく、姉妹プロダクトの関係にある。</p>
+
+  <div class="grid-2">
+    <div class="card card-gold">
+      <span class="badge badge-gold">HACH = hermes-agent × ビジネスドメイン</span>
+      <h3>ISM社が構築したインスタンス</h3>
+      <p>
+        hermes-agent の上に以下を実装：<br><br>
+        ・<strong>brain（判断基準）</strong>：自然言語で業務判断を調整<br>
+        ・<strong>業務データコネクタ</strong>：メール / カレンダー / 議事録の自動収集<br>
+        ・<strong>トリアージエンジン</strong>：赤/黄/青の優先度判定<br>
+        ・<strong>日次ダッシュボード</strong>：毎朝のレポート自動配信<br>
+        ・<strong>BYOCセキュリティ</strong>：御社AWS内でデータ完結<br><br>
+        <em>月額98,000円〜のマネージドサービスとして提供</em>
+      </p>
+    </div>
+    <div class="card card-teal">
+      <span class="badge badge-teal">Hermes = hermes-agent × コミュニティドメイン</span>
+      <h3>自社で構築するインスタンス</h3>
+      <p>
+        hermes-agent の上に以下を実装：<br><br>
+        ・<strong>ネットワークグラフ</strong>：人物→プロジェクト→組織の関係性構築<br>
+        ・<strong>3つの自律エージェント</strong>：日時解決 / 矛盾修正 / 情報収集<br>
+        ・<strong>相乗効果検知</strong>：共鳴リンク / マッチングエージェント<br>
+        ・<strong>心理的安全性設計</strong>：自己開示レベル (Lv0〜Lv3)<br>
+        ・<strong>承認フロー</strong>：agent_proposals + オーナー承認UI<br><br>
+        <em>自社開発 + LLM API実費</em>
+      </p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== 5. 戦略オプション ===== -->
+<section>
+  <div class="section-label">05 — Strategic Options</div>
+  <h2>3つの戦略オプション</h2>
+
+  <div class="grid-3">
+    <div class="card card-gold">
+      <span class="badge badge-gold">Option A</span>
+      <h3>HACH を OEM/連携して使う</h3>
+      <p>
+        <strong>判定：△ 条件付き可</strong><br><br>
+        hermes-agent 基盤が共通のため、HACHの業務情報収集・レポート機能を活用しつつ、コミュニティ特化レイヤー（グラフ・相乗効果）のみ自作する。<br><br>
+        <strong>利点：</strong>情報収集・レポート・チャットBot基盤の開発が不要<br>
+        <strong>課題：</strong>月額コスト、HACHのAPI仕様への依存、ISM社との連携調整が必要
+      </p>
+    </div>
+    <div class="card card-teal">
+      <span class="badge badge-teal">Option B</span>
+      <h3>hermes-agent で自社Hermesをフル構築</h3>
+      <p>
+        <strong>判定：⭕ 推奨</strong><br><br>
+        HACHと同じ hermes-agent フレームワークを直接利用し、コミュニティ特化のエージェントを構築。HACHが実現している機能（スケジュール実行、チャット連携、学習ループ）は hermes-agent のネイティブ機能で対応可能。<br><br>
+        <strong>利点：</strong>月額コストなし、完全な制御権、コミュニティ特化要件を100%実装<br>
+        <strong>課題：</strong>初期構築工数
+      </p>
+    </div>
+    <div class="card card-indigo">
+      <span class="badge badge-indigo">Option C</span>
+      <h3>両方のインスタンスを並走</h3>
+      <p>
+        <strong>判定：△ 将来的に検討</strong><br><br>
+        自社Hermes（コミュニティ分析）とHACH（事務局の業務効率化）を並走させ、それぞれ異なる目的で活用。<br><br>
+        <strong>利点：</strong>各ドメインに最適化された運用<br>
+        <strong>課題：</strong>2つのサービスの運用コスト、データの二重管理
+      </p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== 6. 推奨アーキテクチャ ===== -->
+<section>
+  <div class="section-label">06 — Recommended Architecture</div>
+  <h2>推奨：Option B — hermes-agent で自社Hermesを構築</h2>
+
+  <div class="verdict">
+    <h3>📋 結論：hermes-agent を直接利用して自社Hermesを構築する</h3>
+    <p>
+      HACHが実現している価値の大部分（チャット連携、スケジュール実行、学習ループ、マルチプラットフォーム対応）は、HACHの独自機能ではなく<strong>hermes-agent フレームワーク自体の機能</strong>である。
+      HACHの月額98,000円は、これらの共通基盤 + ビジネスドメイン特化（業務情報コネクタ・brain・BYOCセキュリティ）に対する対価であり、
+      コミュニティ分析という異なるドメインに対して同じ費用を払う必要はない。
+    </p>
+    <ul>
+      <li><strong>hermes-agent は MIT ライセンス。</strong>無料で利用でき、ベンダーロックインなし。</li>
+      <li><strong>LLMプロバイダに非依存。</strong>Nous Portal / OpenRouter / OpenAI / Gemini 等を自由に選択・切替可能。</li>
+      <li><strong>HACHが「できること」の大半は hermes-agent が提供する。</strong>自社Hermesを構築する場合、HACHのようなマネージドサービスを通さずとも同等の基盤が手に入る。</li>
+      <li><strong>コミュニティ特化要件（グラフ・相乗効果・心理的安全性）は自作が必須。</strong>HACHを導入してもこれらは追加開発が必要であり、工数の削減にならない。</li>
+    </ul>
+  </div>
+
+  <div class="card" style="margin-top: 1.5rem;">
+    <h3>🗺️ 実装ロードマップ</h3>
+    <p>
+      <strong>Phase 1（現行MVPの完成）：</strong><br>
+      現行のFastAPI + React ベースでMVPのグラフ可視化・エンティティ抽出を完成させる。<br><br>
+
+      <strong>Phase 2（hermes-agent 統合）：</strong><br>
+      hermes-agent をインストールし、エージェント仕様書の3エージェント（日時解決・矛盾修正・情報収集）を hermes-agent のスキルおよびスケジュールタスクとして実装。
+      hermes-agent のゲートウェイを使って Slack / Discord 連携を実現。<br><br>
+
+      <strong>Phase 3（自律化・発展）：</strong><br>
+      hermes-agent の学習ループを活用し、エージェントが運用を通じて判断基準を自己改善。
+      レポート生成エージェント、マッチングエージェントを追加。
+      Multi-Agent Orchestrator としてのHermes Core を確立。<br><br>
+
+      <strong>Phase 4（HACH連携の再評価）：</strong><br>
+      コミュニティ運営の事務局業務（メール・議事録・タスク管理）の効率化ニーズが明確になった段階で、HACH導入による追加価値を再評価。
+      同じ hermes-agent 基盤であるため、データ連携やエージェント間通信の親和性は高い。
+    </p>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== 7. ISM社との関係 ===== -->
+<section>
+  <div class="section-label">07 — Relationship with ISM</div>
+  <h2>ISM社（HACH提供元）との関係性</h2>
+
+  <div class="grid-2">
+    <div class="card">
+      <span class="badge badge-gold">現時点</span>
+      <h3>ISM AI Valley コミュニティ</h3>
+      <p>
+        ISM社はAI Valley というオフラインイベントコミュニティを運営しており、本プロジェクトのパイロットコミュニティとの接点がある。<br><br>
+        hermes-agent という共通基盤を持つ両者は、技術的な知見の共有やフィードバックループを構築できる可能性がある。
+      </p>
+    </div>
+    <div class="card">
+      <span class="badge badge-teal">将来的に</span>
+      <h3>パートナーシップの可能性</h3>
+      <p>
+        ・HACHのビジネス特化レイヤーと自社Hermesのコミュニティ特化レイヤーは競合しない<br>
+        ・hermes-agent エコシステムへの共同貢献（OSSコントリビュート）<br>
+        ・事務局業務にHACH、コミュニティ分析にHermesという棲み分けが自然<br>
+        ・ISM社にとっても「コミュニティAI」は新しいユースケースとして魅力的な可能性
+      </p>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  <p>hermes-agent ベースのエージェント戦略 比較考察レポート v2 — 作成日: 2026-09-16</p>
+  <p>hermes-agent は NousResearch のOSSプロジェクト（MIT License）です。HACH は株式会社イズムの商標です。</p>
+</footer>
+
+</body>
+</html>

@@ -2,7 +2,7 @@ import json
 from sqlalchemy.orm import Session
 from app.models.entity import Entity
 
-def upsert_entities_from_json(db: Session, json_str: str):
+def upsert_entities_from_json(db: Session, json_str: str, community_id: int):
     if not json_str or json_str == "[]":
         return
     try:
@@ -14,18 +14,20 @@ def upsert_entities_from_json(db: Session, json_str: str):
             tgt_type = rel.get("target_type")
 
             if src_name:
-                src_entity = db.query(Entity).filter(Entity.name == src_name).first()
+                src_entity = db.query(Entity).filter(Entity.name == src_name, Entity.community_id == community_id).first()
                 if not src_entity:
-                    src_entity = Entity(name=src_name, entity_type=src_type or "person")
+                    src_entity = Entity(name=src_name, entity_type=src_type or "person", community_id=community_id)
                     db.add(src_entity)
+                    db.flush()
                 elif src_type:
                     src_entity.entity_type = src_type
 
             if tgt_name:
-                tgt_entity = db.query(Entity).filter(Entity.name == tgt_name).first()
+                tgt_entity = db.query(Entity).filter(Entity.name == tgt_name, Entity.community_id == community_id).first()
                 if not tgt_entity:
-                    tgt_entity = Entity(name=tgt_name, entity_type=tgt_type or "project")
+                    tgt_entity = Entity(name=tgt_name, entity_type=tgt_type or "project", community_id=community_id)
                     db.add(tgt_entity)
+                    db.flush()
                 elif tgt_type:
                     tgt_entity.entity_type = tgt_type
         

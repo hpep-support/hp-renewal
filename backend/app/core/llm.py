@@ -46,7 +46,7 @@ def extract_entities(text: str, image_base64: Optional[str] = None) -> str:
         - "type": MUST be one of "actual", "potential", or "bridge". 
             - "actual": They have explicitly collaborated, actually worked together, or belong to the same specific project/organization.
             - "potential": They share similar roles, have common themes, or represent a potential synergy/resonance without explicit past collaboration.
-            - "bridge": The "source" person explicitly introduced, connected, or bridged the "target" person to someone else or to a project. (e.g. if C introduces A and B, output {source: C, target: A, type: bridge} and {source: C, target: B, type: bridge}).
+            - "bridge": The "source" person explicitly introduced, connected, or bridged the "target" person to someone else or to a project. (e.g. if C introduces A and B, output {{source: C, target: A, type: bridge}} and {{source: C, target: B, type: bridge}}).
         - "event": If the relationship or bridge was triggered by a specific event, meeting, or context mentioned in the text (e.g., "Web3 Conference", "Weekly Sync"), include it here. Otherwise, use null or an empty string.
         
         Example output format:
