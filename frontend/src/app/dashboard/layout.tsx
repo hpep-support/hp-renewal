@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { CommunityProvider, useCommunity } from "./CommunityProvider";
 import { useState } from "react";
-
+import { useRouter } from "next/navigation";
 function CommunitySwitcher() {
   const { communities, currentCommunityId, setCurrentCommunityId, refreshCommunities } = useCommunity();
   const [isCreating, setIsCreating] = useState(false);
@@ -74,6 +74,7 @@ function CommunitySwitcher() {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const handleLogout = () => {};
 
   return (
@@ -116,7 +117,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <button 
                 onClick={() => {
                   localStorage.removeItem("access_token");
-                  window.location.href = "/login";
+                  router.push("/login");
                 }}
                 className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
               >
