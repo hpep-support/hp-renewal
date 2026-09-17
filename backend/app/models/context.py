@@ -12,6 +12,13 @@ class Context(Base):
     context_type = Column(String(20), nullable=False) # 'asis' or 'tobe'
     resource_url = Column(String(500), nullable=True)
     extracted_entities = Column(String(1000), nullable=True)
+    
+    # Hermes Agent Extensions
+    info_date = Column(DateTime(timezone=True), nullable=True)
+    info_date_source = Column(String(50), default="unknown")
+    revision = Column(Integer, default=1)
+    source_agent = Column(String(50), nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
