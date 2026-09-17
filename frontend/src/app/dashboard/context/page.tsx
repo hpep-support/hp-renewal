@@ -565,18 +565,27 @@ export default function ContextPage() {
                     )}
                   </div>
                   <div className="flex-1">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-slate-500 font-mono">
-                          {new Date(context.created_at).toLocaleString()}
-                        </span>
-                        {context.resource_url && (
-                          <a href={context.resource_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs px-2 py-1 bg-slate-800 rounded-md text-teal-400 hover:bg-slate-700 transition-colors">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
-                            Resource
-                          </a>
-                        )}
-                      </div>
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="text-xs text-slate-500 font-mono" title="Created At">
+                            {new Date(context.created_at).toLocaleString()}
+                          </span>
+                          
+                          {/* Hermes Agent Data */}
+                          {context.info_date && (
+                            <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 rounded-md" title={`Found by: ${context.source_agent}`}>
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                              Date: {new Date(context.info_date).toLocaleDateString()}
+                            </span>
+                          )}
+
+                          {context.resource_url && (
+                            <a href={context.resource_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs px-2 py-1 bg-slate-800 rounded-md text-teal-400 hover:bg-slate-700 transition-colors">
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                              Resource
+                            </a>
+                          )}
+                        </div>
                       
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                         <button 
