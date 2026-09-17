@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
-from app.api.routes import api_router
+from app.api.routes import users, records, synergies, contexts, invites, graph_preferences, entities, agents
 
 settings = get_settings()
 
@@ -21,7 +21,14 @@ if settings.cors_origins_list:
         allow_headers=["*"],
     )
 
-app.include_router(api_router, prefix="/api")
+app.include_router(users.router, prefix="/api")
+app.include_router(records.router, prefix="/api")
+app.include_router(synergies.router, prefix="/api")
+app.include_router(contexts.router, prefix="/api")
+app.include_router(invites.router, prefix="/api")
+app.include_router(graph_preferences.router, prefix="/api")
+app.include_router(entities.router, prefix="/api")
+app.include_router(agents.router, prefix="/api")
 
 @app.get("/health")
 def health_check():
