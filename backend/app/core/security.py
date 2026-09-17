@@ -5,6 +5,7 @@ from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from cryptography.fernet import Fernet
 
 from app.core.config import get_settings
 from app.core.database import get_db
@@ -13,6 +14,22 @@ from app.models.user import User
 settings = get_settings()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer_scheme = HTTPBearer()
+
+# Fernet encryption for OAuth tokens
+fernet = Fernet(settings.encryption_key.encode() if settings.encryption_key else b"")
+
+def encrypt_token(token: str) -> str:
+    if not token or not settings.encryption_key:
+        return token
+    return fernet.encrypt(token.encode()).decode()
+
+def decrypt_token(encrypted_token: str) -> str:
+    if not encrypted_token or not settings.encryption_key:
+        return encrypted_token
+    try:
+        return fernet.decrypt(encrypted_token.encode()).decode()
+    except Exception:
+        return encrypted_token
 
 
 def verify_password(plain: str, hashed: str) -> bool:

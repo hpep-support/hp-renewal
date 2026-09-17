@@ -27,7 +27,7 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
       const token = localStorage.getItem("access_token");
       if (!token) return;
 
-      const res = await fetch("/api/communities", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api"}/communities`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {

@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     # App
     app_env: str = "development"
     secret_key: str = "change-this-secret"
+    encryption_key: str = "G-d68a-wYfLwYw77QhJvD8Z1Lz2A4P7v-pWwZ3k5aR0="  # 32-byte base64 encoded for Fernet
 
     # Database
     database_url: str = "postgresql://dao_user:dao_pass@localhost:5432/dao_db"
