@@ -13,7 +13,7 @@ function CommunitySwitcher() {
     if (!newCommunityName.trim()) return;
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch("http://localhost:8001/api/communities/", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api"}/communities/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
