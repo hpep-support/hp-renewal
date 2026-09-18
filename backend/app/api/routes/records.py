@@ -11,8 +11,23 @@ from app.models.context import Context
 
 from app.services.postiz import publish_to_postiz
 from app.api.routes.synergies import generate_synergies_task
+from app.services.agents.triple_extractor import extract_triples_from_context
+from app.core.database import SessionLocal
 
 router = APIRouter()
+
+def background_pipeline(context_id: int, delay_ms: int):
+    db = SessionLocal()
+    try:
+        context = db.query(Context).filter(Context.id == context_id).first()
+        if context:
+            # 1. Extract Triples
+            extract_triples_from_context(db, context)
+    finally:
+        db.close()
+        
+    # 2. Run Synergy Batch
+    generate_synergies_task(delay_ms)
 
 @router.post("/", response_model=RecordResponse, status_code=status.HTTP_201_CREATED)
 async def create_record(
@@ -45,8 +60,8 @@ async def create_record(
     if record.disclosure_level == 3:
         await publish_to_postiz(record.body)
         
-    # Automatically trigger synergy generation
-    background_tasks.add_task(generate_synergies_task, delay_ms)
+    # Automatically trigger the full pipeline
+    background_tasks.add_task(background_pipeline, context.id, delay_ms)
         
     return record
 
@@ -88,8 +103,11 @@ def update_record(
     db.commit()
     db.refresh(record)
     
-    # Automatically trigger synergy generation on update
-    background_tasks.add_task(generate_synergies_task, delay_ms)
+    # Automatically trigger the full pipeline on update
+    if 'context' in locals() and context:
+        background_tasks.add_task(background_pipeline, context.id, delay_ms)
+    else:
+        background_tasks.add_task(generate_synergies_task, delay_ms)
     
     return record
 

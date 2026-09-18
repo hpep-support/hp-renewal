@@ -5,23 +5,29 @@ import SynergyGraph from "@/components/SynergyGraph";
 
 export default function DashboardOverview() {
   const [synergies, setSynergies] = useState<any[]>([]);
-  const [contexts, setContexts] = useState<any[]>([]);
+  const [graphNodes, setGraphNodes] = useState<any[]>([]);
+  const [graphTriples, setGraphTriples] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [generating, setGenerating] = useState(false);
   const [delayMs, setDelayMs] = useState<number>(
     typeof window !== "undefined" ? parseInt(localStorage.getItem("agentDelayMs") || "0") : 0
   );
+  const [autoResetAnimation, setAutoResetAnimation] = useState<boolean>(
+    typeof window !== "undefined" ? localStorage.getItem("autoResetAnimation") === "true" : false
+  );
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (isPolling = false) => {
     const token = localStorage.getItem("token");
     try {
-      // Get user info to check if owner
-      const userRes = await fetch("http://localhost:8000/api/auth/me", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const userData = await userRes.json();
-      setUser(userData);
+      if (!isPolling) {
+        // Get user info to check if owner only on initial load
+        const userRes = await fetch("http://localhost:8000/api/auth/me", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const userData = await userRes.json();
+        setUser(userData);
+      }
 
       // Fetch synergies
       const synRes = await fetch("http://localhost:8000/api/synergies/", {
@@ -32,13 +38,15 @@ export default function DashboardOverview() {
         setSynergies(synData);
       }
 
-      // Fetch contexts for the graph nodes
-      const ctxRes = await fetch("http://localhost:8000/api/contexts/", {
+      // Fetch graph data (entities and triples)
+      const graphRes = await fetch("http://localhost:8000/api/graph/", {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (ctxRes.ok) {
-        const ctxData = await ctxRes.json();
-        setContexts(ctxData);
+      if (graphRes.ok) {
+        const graphData = await graphRes.json();
+        setGraphNodes(graphData.nodes);
+        setGraphTriples(graphData.triples);
+        // Note: graphData.synergies is also returned but we can just use the synergies we fetched above, or use them together.
       }
     } catch (err) {
       console.error(err);
@@ -49,6 +57,13 @@ export default function DashboardOverview() {
 
   useEffect(() => {
     fetchDashboardData();
+    
+    // Setup polling every 5 seconds for real-time updates
+    const intervalId = setInterval(() => {
+      fetchDashboardData(true);
+    }, 5000);
+    
+    return () => clearInterval(intervalId);
   }, []);
 
   const handleReview = async (id: number, result: string) => {
@@ -78,7 +93,7 @@ export default function DashboardOverview() {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }
       });
-      alert("Analysis started in the background. Please refresh after a few moments.");
+      // The polling mechanism will automatically fetch the new data as it is generated in the background
     } catch (err) {
       console.error(err);
       alert("Error starting analysis.");
@@ -116,17 +131,30 @@ export default function DashboardOverview() {
               <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
                 Agent Exploration Interval: {delayMs}ms
               </label>
-              <input 
-                type="range" 
-                min="0" max="5000" step="500" 
-                value={delayMs} 
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  setDelayMs(val);
-                  localStorage.setItem("agentDelayMs", val.toString());
-                }}
-                style={{ width: '150px' }}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <input 
+                  type="range" 
+                  min="0" max="5000" step="500" 
+                  value={delayMs} 
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setDelayMs(val);
+                    localStorage.setItem("agentDelayMs", val.toString());
+                  }}
+                  style={{ width: '100px' }}
+                />
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={autoResetAnimation}
+                    onChange={(e) => {
+                      setAutoResetAnimation(e.target.checked);
+                      localStorage.setItem("autoResetAnimation", e.target.checked.toString());
+                    }}
+                  />
+                  Auto-Reset Anim
+                </label>
+              </div>
             </div>
             
             <button className="btn-primary" onClick={handleRunAnalysis} disabled={generating}>
@@ -139,9 +167,13 @@ export default function DashboardOverview() {
         AI-detected potential collaborations and shared context between members.
       </p>
 
-      {/* Network Graph */}
       <h2 style={{ fontSize: '1.25rem', marginBottom: 'var(--space-md)' }}>Synergy Network Map</h2>
-      <SynergyGraph contexts={contexts} synergies={synergies} />
+      <SynergyGraph 
+        nodes={graphNodes} 
+        triples={graphTriples} 
+        synergies={synergies} 
+        autoReset={autoResetAnimation}
+      />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
         <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Discovered Synergies</h2>
@@ -190,15 +222,12 @@ export default function DashboardOverview() {
                   <p style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{syn.reason}</p>
                 </div>
               )}
-
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
                 <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--space-sm)', borderRadius: 'var(--radius-md)' }}>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-xs)' }}>Context A ID: {syn.context_a_id}</p>
-                  <p style={{ fontSize: '0.875rem' }}>[Content preview omitted for MVP]</p>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-xs)' }}>Entity A ID: {syn.entity_a_id}</p>
                 </div>
                 <div style={{ background: 'var(--bg-tertiary)', padding: 'var(--space-sm)', borderRadius: 'var(--radius-md)' }}>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-xs)' }}>Context B ID: {syn.context_b_id}</p>
-                  <p style={{ fontSize: '0.875rem' }}>[Content preview omitted for MVP]</p>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-xs)' }}>Entity B ID: {syn.entity_b_id}</p>
                 </div>
               </div>
 

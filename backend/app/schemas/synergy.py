@@ -3,8 +3,8 @@ from typing import Optional, List
 from datetime import datetime
 
 class SynergyCandidateBase(BaseModel):
-    context_a_id: int
-    context_b_id: int
+    entity_a_id: int
+    entity_b_id: int
     score: float
     agent_type: Optional[str] = None
     reason: Optional[str] = None

@@ -7,6 +7,7 @@ from app.core.security import get_current_user, require_owner
 from app.models.user import User
 from app.models.record import Record
 from app.models.context import Context
+from app.models.entity import Entity
 from app.models.synergy import SynergyCandidate
 from app.schemas.synergy import SynergyCandidateResponse, SynergyReview
 from app.services.llm import calculate_synergy_score
@@ -42,25 +43,27 @@ import time
 def generate_synergies_task(delay_ms: int = 0):
     db = SessionLocal()
     try:
-        contexts = db.query(Context).all()
+        entities = db.query(Entity).all()
         
         threshold = 0.7
-        for i in range(len(contexts)):
-            for j in range(i + 1, len(contexts)):
+        for i in range(len(entities)):
+            for j in range(i + 1, len(entities)):
                 
                 # Check if pair already evaluated
                 existing = db.query(SynergyCandidate).filter(
-                    ((SynergyCandidate.context_a_id == contexts[i].id) & (SynergyCandidate.context_b_id == contexts[j].id)) |
-                    ((SynergyCandidate.context_a_id == contexts[j].id) & (SynergyCandidate.context_b_id == contexts[i].id))
+                    ((SynergyCandidate.entity_a_id == entities[i].id) & (SynergyCandidate.entity_b_id == entities[j].id)) |
+                    ((SynergyCandidate.entity_a_id == entities[j].id) & (SynergyCandidate.entity_b_id == entities[i].id))
                 ).first()
                 if existing:
                     continue
                     
-                result = calculate_synergy_score(contexts[i].body, contexts[j].body, "")
+                text_a = f"{entities[i].name} (Type: {entities[i].type})"
+                text_b = f"{entities[j].name} (Type: {entities[j].type})"
+                result = calculate_synergy_score(text_a, text_b, "")
                 if result["score"] >= threshold:
                     synergy = SynergyCandidate(
-                        context_a_id=contexts[i].id,
-                        context_b_id=contexts[j].id,
+                        entity_a_id=entities[i].id,
+                        entity_b_id=entities[j].id,
                         score=result["score"],
                         agent_type=result["agent_type"],
                         reason=result["reason"]

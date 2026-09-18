@@ -11,7 +11,7 @@ generation_config = {
   "temperature": 0.2,
   "top_p": 0.95,
   "top_k": 40,
-  "max_output_tokens": 1024,
+  "max_output_tokens": 8192,
   "response_mime_type": "application/json",
 }
 
@@ -43,6 +43,23 @@ def extract_tags(text: str) -> list[str]:
         print(f"Error extracting tags: {e}")
         return []
 
+def call_llm(prompt: str) -> str:
+    """Generic function to call the LLM with a given prompt."""
+    if not settings.gemini_api_key:
+        return ""
+    
+    model = genai.GenerativeModel(
+        model_name=settings.gemini_model,
+        generation_config=generation_config,
+    )
+    
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        print(f"Error in call_llm: {e}")
+        return ""
+
 def calculate_synergy_score(text_a: str, text_b: str, context: str = "") -> dict:
     """Calculate the synergy score between two texts using Gemini."""
     if not settings.gemini_api_key:
@@ -61,6 +78,8 @@ def calculate_synergy_score(text_a: str, text_b: str, context: str = "") -> dict
     1. Decide on a suitable "agent_type" (a persona) that would best identify this synergy (e.g., "Business Strategist", "Technical Architect", "Community Matchmaker", "Marketing Expert").
     2. Explain the specific reason for the synergy.
     3. Rate the synergy score from 0.0 (completely unrelated) to 1.0 (highly synergistic, complementary, or perfectly aligned).
+    
+    CRITICAL: The "agent_type" and "reason" MUST be written in the same language as the entities in Text A and Text B. For example, if Text A and Text B are in Japanese, output the reason and agent_type in Japanese (e.g., "コミュニティマネージャー", "両者ともにWeb3の教育に関心があります").
     
     Return ONLY a JSON object with the following keys:
     - "agent_type": The string representing the persona.
