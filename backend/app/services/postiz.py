@@ -1,34 +1,34 @@
 import httpx
-import asyncio
 from app.core.config import get_settings
 
 settings = get_settings()
 
-async def post_to_sns_via_postiz(content: str) -> dict:
-    """
-    Sends the content to Postiz API for multi-SNS delivery.
-    In MVP, this mocks the response if API keys are not properly set,
-    allowing the user to test the workflow without full Postiz setup.
-    """
-    api_url = settings.postiz_api_url
-    api_key = settings.postiz_api_key
-
-    # Mocking for MVP if no real API key is configured
-    if not api_key or api_key == "your-postiz-api-key-here":
-        print(f"[MOCK POSTIZ] Broadcasting to SNS: {content}")
-        await asyncio.sleep(1) # Simulate network delay
-        return {"status": "success", "mocked": True, "message": "Broadcasted via Mock Postiz"}
-
-    # Actual HTTP call (example for a standard POST API)
+async def publish_to_postiz(body: str) -> bool:
+    """Send text to Postiz for multi-SNS publishing."""
+    if not settings.postiz_api_url or not settings.postiz_api_key:
+        print("Postiz not configured. Skipping SNS distribution.")
+        return False
+        
+    url = f"{settings.postiz_api_url}/posts"
+    headers = {
+        "Authorization": f"Bearer {settings.postiz_api_key}",
+        "Content-Type": "application/json"
+    }
+    # Mocking Postiz payload structure based on typical Gitroom/Postiz API
+    payload = {
+        "content": body,
+        "type": "text"
+        # additional details like scheduled_time could be added
+    }
+    
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{api_url}/posts",
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={"content": content, "platforms": ["twitter", "linkedin"]}
-            )
-            response.raise_for_status()
-            return {"status": "success", "data": response.json()}
+            response = await client.post(url, headers=headers, json=payload)
+            if response.status_code in (200, 201):
+                return True
+            else:
+                print(f"Failed to publish to Postiz: {response.status_code} {response.text}")
+                return False
     except Exception as e:
-        print(f"[POSTIZ ERROR] Failed to broadcast: {str(e)}")
-        return {"status": "error", "message": str(e)}
+        print(f"Error calling Postiz: {e}")
+        return False

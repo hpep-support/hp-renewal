@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -12,10 +11,7 @@ from app.core.database import get_db
 from app.models.user import User
 
 settings = get_settings()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer_scheme = HTTPBearer()
-
-# Fernet encryption for OAuth tokens
 fernet = Fernet(settings.encryption_key.encode() if settings.encryption_key else b"")
 
 def encrypt_token(token: str) -> str:
@@ -32,12 +28,14 @@ def decrypt_token(encrypted_token: str) -> str:
         return encrypted_token
 
 
-def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+import bcrypt
 
+def verify_password(plain: str, hashed: str) -> bool:
+    return bcrypt.checkpw(plain.encode('utf-8'), hashed.encode('utf-8'))
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 
 def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:

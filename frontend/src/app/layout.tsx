@@ -3,23 +3,26 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
-  variable: "--font-inter",
   subsets: ["latin"],
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
-  title: "AI DAO Utility MVP",
-  description: "A platform for visualizing community synergies.",
+  title: "AI DAO Community - Activity Hub",
+  description: "A centralized platform for community posts and notes with AI synergy detection.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html
-      lang="en"
-      className={`${inter.variable} h-full antialiased dark`}
-    >
-      <body className="min-h-full flex flex-col bg-slate-950 text-slate-50 selection:bg-indigo-500/30">
-        {children}
+    <html lang="ja" className={inter.variable}>
+      <body>
+        <main className="container">
+          {children}
+        </main>
       </body>
     </html>
   );

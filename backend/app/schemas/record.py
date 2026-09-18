@@ -4,7 +4,7 @@ from datetime import datetime
 
 class RecordBase(BaseModel):
     body: str
-    disclosure_level: int = 0
+    disclosure_level: int
 
 class RecordCreate(RecordBase):
     pass
@@ -12,7 +12,6 @@ class RecordCreate(RecordBase):
 class RecordUpdate(BaseModel):
     body: Optional[str] = None
     disclosure_level: Optional[int] = None
-    tags: Optional[List[str]] = None
 
 class RecordResponse(RecordBase):
     id: int

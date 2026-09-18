@@ -1,19 +1,21 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
-from app.schemas.record import RecordResponse
 
-class SynergyCandidateResponse(BaseModel):
-    id: int
-    record_a_id: int
-    record_b_id: int
+class SynergyCandidateBase(BaseModel):
+    context_a_id: int
+    context_b_id: int
     score: float
+    agent_type: Optional[str] = None
+    reason: Optional[str] = None
+
+class SynergyCandidateResponse(SynergyCandidateBase):
+    id: int
     review_result: Optional[str] = None
     generated_at: datetime
-    
-    # Optional nested records for rich display
-    record_a: Optional[RecordResponse] = None
-    record_b: Optional[RecordResponse] = None
 
     class Config:
         from_attributes = True
+
+class SynergyReview(BaseModel):
+    review_result: str # "useful", "not_useful"
