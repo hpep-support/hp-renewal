@@ -22,7 +22,7 @@ export default function DashboardOverview() {
     try {
       if (!isPolling) {
         // Get user info to check if owner only on initial load
-        const userRes = await fetch("http://localhost:8000/api/auth/me", {
+        const userRes = await fetch((process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + "/api/auth/me", {
           headers: { Authorization: `Bearer ${token}` }
         });
         const userData = await userRes.json();
@@ -30,7 +30,7 @@ export default function DashboardOverview() {
       }
 
       // Fetch synergies
-      const synRes = await fetch("http://localhost:8000/api/synergies/", {
+      const synRes = await fetch((process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + "/api/synergies/", {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (synRes.ok) {
@@ -39,7 +39,7 @@ export default function DashboardOverview() {
       }
 
       // Fetch graph data (entities and triples)
-      const graphRes = await fetch("http://localhost:8000/api/graph/", {
+      const graphRes = await fetch((process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + "/api/graph/", {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (graphRes.ok) {
@@ -69,7 +69,7 @@ export default function DashboardOverview() {
   const handleReview = async (id: number, result: string) => {
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`http://localhost:8000/api/synergies/${id}/review`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/synergies/${id}/review`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -89,7 +89,7 @@ export default function DashboardOverview() {
     setGenerating(true);
     const token = localStorage.getItem("token");
     try {
-      await fetch(`http://localhost:8000/api/synergies/batch?delay_ms=${delayMs}`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/synergies/batch?delay_ms=${delayMs}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -107,7 +107,7 @@ export default function DashboardOverview() {
     
     const token = localStorage.getItem("token");
     try {
-      await fetch("http://localhost:8000/api/synergies/all", {
+      await fetch((process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + "/api/synergies/all", {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });

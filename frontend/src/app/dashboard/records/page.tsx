@@ -18,7 +18,7 @@ export default function RecordsPage() {
     const fetchRecords = async () => {
       const token = localStorage.getItem("token");
       try {
-        const res = await fetch("http://localhost:8000/api/records/", {
+        const res = await fetch((process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + "/api/records/", {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {

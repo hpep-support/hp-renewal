@@ -18,7 +18,7 @@ export default function ContextPage() {
   const fetchContexts = async () => {
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch("http://localhost:8000/api/contexts/", {
+      const res = await fetch((process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + "/api/contexts/", {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -47,7 +47,7 @@ export default function ContextPage() {
     const token = localStorage.getItem("token");
 
     try {
-      const res = await fetch("http://localhost:8000/api/contexts/", {
+      const res = await fetch((process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + "/api/contexts/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -70,7 +70,7 @@ export default function ContextPage() {
   const handleDelete = async (id: number) => {
     const token = localStorage.getItem("token");
     try {
-      await fetch(`http://localhost:8000/api/contexts/${id}`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/contexts/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -89,7 +89,7 @@ export default function ContextPage() {
   const handleEditSave = async (id: number) => {
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`http://localhost:8000/api/contexts/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/contexts/${id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

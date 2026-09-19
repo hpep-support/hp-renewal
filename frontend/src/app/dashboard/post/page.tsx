@@ -20,7 +20,7 @@ export default function PostPage() {
 
     try {
       const delayMs = parseInt(localStorage.getItem("agentDelayMs") || "0");
-      const res = await fetch(`http://localhost:8000/api/records/?delay_ms=${delayMs}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/records/?delay_ms=${delayMs}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

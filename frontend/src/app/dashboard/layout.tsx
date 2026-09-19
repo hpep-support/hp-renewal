@@ -17,7 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     // Fetch user info
-    fetch("http://localhost:8000/api/auth/me", {
+    fetch((process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + "/api/auth/me", {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => res.json())
