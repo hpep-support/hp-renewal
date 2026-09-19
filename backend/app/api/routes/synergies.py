@@ -20,7 +20,11 @@ def get_synergies(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    synergies = db.query(SynergyCandidate).order_by(SynergyCandidate.score.desc()).all()
+    active_ids = {e.id for e in db.query(Entity.id).filter(Entity.merged_into_id == None).all()}
+    synergies = db.query(SynergyCandidate).filter(
+        SynergyCandidate.entity_a_id.in_(active_ids),
+        SynergyCandidate.entity_b_id.in_(active_ids)
+    ).order_by(SynergyCandidate.score.desc()).all()
     return synergies
 
 @router.post("/{synergy_id}/review", response_model=SynergyCandidateResponse)

@@ -33,19 +33,26 @@ def get_graph_data(
             "confidence": ent.confidence
         })
         
+    canonical_map = {e.id: (e.merged_into_id or e.id) for e in db.query(Entity.id, Entity.merged_into_id).all()}
     links = []
-    # Add triples as links (ensuring both ends are in active entities)
+    seen_links = set()
+    # Add triples as links (resolving merged entities to active entities and avoiding self-loops/duplicates)
     for t in triples:
-        if t.subject_id in active_entity_ids and t.object_id in active_entity_ids:
-            links.append({
-                "id": f"t_{t.id}",
-                "source": t.subject_id,
-                "target": t.object_id,
-                "label": t.predicate,
-                "type": "triple",
-                "source_agent": t.source_agent,
-                "info_date": t.info_date.isoformat() if t.info_date else None
-            })
+        subj = canonical_map.get(t.subject_id, t.subject_id)
+        obj = canonical_map.get(t.object_id, t.object_id)
+        if subj in active_entity_ids and obj in active_entity_ids and subj != obj:
+            link_key = (subj, obj, t.predicate)
+            if link_key not in seen_links:
+                seen_links.add(link_key)
+                links.append({
+                    "id": f"t_{t.id}",
+                    "source": subj,
+                    "target": obj,
+                    "label": t.predicate,
+                    "type": "triple",
+                    "source_agent": t.source_agent,
+                    "info_date": t.info_date.isoformat() if t.info_date else None
+                })
         
     syn_data = []
     for s in synergies:

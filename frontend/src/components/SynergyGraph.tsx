@@ -90,9 +90,14 @@ export default function SynergyGraph({
     });
 
     const links: any[] = [];
+    const validNodeIds = new Set(graphNodes.map((n) => n.id));
 
-    // Add triples as standard edges
+    // Add triples as standard edges (only if both source and target exist)
     triples.forEach((t) => {
+      if (!validNodeIds.has(t.source) || !validNodeIds.has(t.target)) {
+        return;
+      }
+
       const linkId = `t_${t.source}_${t.target}_${t.label}`;
       const isNew = !seenLinkIds.current.has(linkId);
       if (isNew) seenLinkIds.current.add(linkId);
@@ -111,6 +116,14 @@ export default function SynergyGraph({
 
     // Add synergies (with Reason Nodes)
     synergies.forEach((s) => {
+      const src = s.source || s.entity_a_id;
+      const tgt = s.target || s.entity_b_id;
+
+      // Both source and target entity must exist in the node set
+      if (!validNodeIds.has(src) || !validNodeIds.has(tgt)) {
+        return;
+      }
+
       if (s.agent_type && s.reason) {
         const reasonNodeId = `syn_${s.id}`;
         const isNewNode = !seenNodeIds.current.has(reasonNodeId);
@@ -127,9 +140,10 @@ export default function SynergyGraph({
           isNew: isNewNode,
           createdAt: isNewNode ? Date.now() : prevNode.createdAt || Date.now(),
         });
+        validNodeIds.add(reasonNodeId);
 
         links.push({
-          source: s.source || s.entity_a_id,
+          source: src,
           target: reasonNodeId,
           value: s.score,
           type: "synergy",
@@ -137,21 +151,26 @@ export default function SynergyGraph({
 
         links.push({
           source: reasonNodeId,
-          target: s.target || s.entity_b_id,
+          target: tgt,
           value: s.score,
           type: "synergy",
         });
       } else {
         links.push({
-          source: s.source || s.entity_a_id,
-          target: s.target || s.entity_b_id,
+          source: src,
+          target: tgt,
           value: s.score,
           type: "synergy",
         });
       }
     });
 
-    setGraphData({ nodes: graphNodes, links });
+    // Final safety filter to guarantee all links connect existing nodes
+    const safeLinks = links.filter(
+      (l) => validNodeIds.has(l.source) && validNodeIds.has(l.target)
+    );
+
+    setGraphData({ nodes: graphNodes, links: safeLinks });
   }, [nodes, triples, synergies, autoReset]);
 
   useEffect(() => {
