@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.entity import Entity
 from app.models.triple import Triple
@@ -14,43 +14,51 @@ def get_graph_data(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    entities = db.query(Entity).all()
+    # Only return active entities (not merged into another)
+    entities = db.query(Entity).filter(Entity.merged_into_id == None).all()
     triples = db.query(Triple).all()
     synergies = db.query(SynergyCandidate).all()
     
-    # Format entities to include context text for the tooltip
     nodes = []
+    active_entity_ids = {ent.id for ent in entities}
+    
     for ent in entities:
         nodes.append({
             "id": ent.id,
             "name": ent.name,
-            "type": ent.type,
-            "context_body": ent.context.body if ent.context else ""
+            "type": ent.type or "Concept",
+            "context_body": ent.context.body if ent.context else "",
+            "created_by_agent": ent.created_by_agent,
+            "info_date": ent.info_date.isoformat() if ent.info_date else None,
+            "confidence": ent.confidence
         })
         
     links = []
-    # Add triples as links
+    # Add triples as links (ensuring both ends are in active entities)
     for t in triples:
-        links.append({
-            "source": t.subject_id,
-            "target": t.object_id,
-            "label": t.predicate,
-            "type": "triple"
-        })
+        if t.subject_id in active_entity_ids and t.object_id in active_entity_ids:
+            links.append({
+                "id": f"t_{t.id}",
+                "source": t.subject_id,
+                "target": t.object_id,
+                "label": t.predicate,
+                "type": "triple",
+                "source_agent": t.source_agent,
+                "info_date": t.info_date.isoformat() if t.info_date else None
+            })
         
-    # Add synergies as links (or Reason Nodes)
-    # The frontend SynergyGraph will handle Reason Nodes logic, we just pass the synergy data
     syn_data = []
     for s in synergies:
-        syn_data.append({
-            "id": s.id,
-            "source": s.entity_a_id,
-            "target": s.entity_b_id,
-            "score": s.score,
-            "agent_type": s.agent_type,
-            "reason": s.reason,
-            "type": "synergy"
-        })
+        if s.entity_a_id in active_entity_ids and s.entity_b_id in active_entity_ids:
+            syn_data.append({
+                "id": s.id,
+                "source": s.entity_a_id,
+                "target": s.entity_b_id,
+                "score": s.score,
+                "agent_type": s.agent_type,
+                "reason": s.reason,
+                "type": "synergy"
+            })
         
     return {
         "nodes": nodes,

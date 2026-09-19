@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, useMemo } from "react";
-import dynamic from 'next/dynamic';
+import dynamic from "next/dynamic";
 
-// dynamically import ForceGraph2D to avoid SSR issues
-const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
-  ssr: false
+// Dynamically import ForceGraph2D to avoid SSR issues
+const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
+  ssr: false,
 });
 
 interface SynergyGraphProps {
@@ -13,25 +13,43 @@ interface SynergyGraphProps {
   triples: any[];
   synergies: any[];
   autoReset?: boolean;
+  discoveryAnimationEnabled?: boolean;
+  currentUserId?: number;
 }
 
-export default function SynergyGraph({ nodes, triples, synergies, autoReset = false }: SynergyGraphProps) {
-  const [graphData, setGraphData] = useState({ nodes: [], links: [] });
+export default function SynergyGraph({
+  nodes,
+  triples,
+  synergies,
+  autoReset = false,
+  discoveryAnimationEnabled = true,
+  currentUserId,
+}: SynergyGraphProps) {
+  const [graphData, setGraphData] = useState<{ nodes: any[]; links: any[] }>({ nodes: [], links: [] });
   const [hoverNode, setHoverNode] = useState<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
+  const [dimensions, setDimensions] = useState({ width: 800, height: 420 });
   const seenNodeIds = useRef(new Set<string | number>());
   const seenLinkIds = useRef(new Set<string>());
   const prevDataCount = useRef(0);
 
+  // Check prefers-reduced-motion
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+      setPrefersReducedMotion(mediaQuery.matches);
+      const listener = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+      mediaQuery.addEventListener("change", listener);
+      return () => mediaQuery.removeEventListener("change", listener);
+    }
+  }, []);
+
   useEffect(() => {
     const currentDataCount = nodes.length + triples.length + synergies.length;
-    
-    // If data hasn't changed, avoid rebuilding and setting graphData to prevent layout/physics reset
+
     if (currentDataCount > 0 && currentDataCount === prevDataCount.current) {
       if (autoReset) {
-        // Just mutate existing graphData properties to re-trigger canvas animation
-        // without calling setGraphData, so the physics simulation doesn't reheat
         const now = Date.now();
         graphData.nodes.forEach((n: any) => {
           n.isNew = true;
@@ -44,52 +62,62 @@ export default function SynergyGraph({ nodes, triples, synergies, autoReset = fa
       }
       return;
     }
-    
-    prevDataCount.current = currentDataCount;
 
-    // Create a map of existing nodes to preserve their x, y physics state
+    prevDataCount.current = currentDataCount;
     const existingNodes = new Map(graphData.nodes.map((n: any) => [n.id, n]));
 
-    // prepare nodes
-    const graphNodes = nodes.map(n => {
+    // Prepare nodes
+    const graphNodes = nodes.map((n) => {
       const isNew = !seenNodeIds.current.has(n.id);
       if (isNew) seenNodeIds.current.add(n.id);
-      
+
       const prevNode = existingNodes.get(n.id) || {};
-      
+      const typeLower = (n.type || "").toLowerCase();
+      const group = typeLower === "person" ? 1 : typeLower === "organization" ? 2 : 3;
+
       return {
         ...prevNode,
         id: n.id,
         label: n.name,
-        group: n.type === 'Person' ? 1 : n.type === 'Organization' ? 2 : 3,
+        type: n.type,
+        group,
         context_body: n.context_body,
+        created_by_agent: n.created_by_agent,
+        info_date: n.info_date,
         isNew: isNew,
-        createdAt: isNew ? Date.now() : prevNode.createdAt
+        createdAt: isNew ? Date.now() : prevNode.createdAt || Date.now(),
       };
     });
 
-    // prepare links and insert reason nodes if applicable
     const links: any[] = [];
-    
+
     // Add triples as standard edges
-    triples.forEach(t => {
+    triples.forEach((t) => {
+      const linkId = `t_${t.source}_${t.target}_${t.label}`;
+      const isNew = !seenLinkIds.current.has(linkId);
+      if (isNew) seenLinkIds.current.add(linkId);
+
       links.push({
+        id: linkId,
         source: t.source,
         target: t.target,
         label: t.label,
-        type: 'triple',
-        value: 1
+        type: "triple",
+        value: 1,
+        isNew,
+        createdAt: isNew ? Date.now() : 0,
       });
     });
 
-    synergies.forEach(s => {
+    // Add synergies (with Reason Nodes)
+    synergies.forEach((s) => {
       if (s.agent_type && s.reason) {
         const reasonNodeId = `syn_${s.id}`;
         const isNewNode = !seenNodeIds.current.has(reasonNodeId);
         if (isNewNode) seenNodeIds.current.add(reasonNodeId);
-        
+
         const prevNode = existingNodes.get(reasonNodeId) || {};
-        
+
         graphNodes.push({
           ...prevNode,
           id: reasonNodeId,
@@ -97,65 +125,54 @@ export default function SynergyGraph({ nodes, triples, synergies, autoReset = fa
           group: 4, // 4: agent reason node
           context_body: "",
           isNew: isNewNode,
-          createdAt: isNewNode ? Date.now() : prevNode.createdAt
+          createdAt: isNewNode ? Date.now() : prevNode.createdAt || Date.now(),
         });
-        
+
         links.push({
-          source: s.entity_a_id,
+          source: s.source || s.entity_a_id,
           target: reasonNodeId,
           value: s.score,
-          type: 'synergy'
+          type: "synergy",
         });
-        
+
         links.push({
           source: reasonNodeId,
-          target: s.entity_b_id,
+          target: s.target || s.entity_b_id,
           value: s.score,
-          type: 'synergy'
+          type: "synergy",
         });
       } else {
         links.push({
-          source: s.entity_a_id,
-          target: s.entity_b_id,
+          source: s.source || s.entity_a_id,
+          target: s.target || s.entity_b_id,
           value: s.score,
-          type: 'synergy'
+          type: "synergy",
         });
       }
     });
 
-    // Mark new links
-    links.forEach(l => {
-      const linkId = `${l.source}-${l.target}-${l.type}`;
-      if (!seenLinkIds.current.has(linkId)) {
-        l.isNew = true;
-        l.createdAt = Date.now();
-        seenLinkIds.current.add(linkId);
-      }
-    });
-
-    setGraphData({ nodes: graphNodes as any, links: links as any });
-  }, [nodes, triples, synergies, autoReset, graphData]);
+    setGraphData({ nodes: graphNodes, links });
+  }, [nodes, triples, synergies, autoReset]);
 
   useEffect(() => {
-    // update dimensions on mount
     if (containerRef.current) {
       setDimensions({
         width: containerRef.current.offsetWidth,
-        height: 400,
+        height: 420,
       });
     }
-    
+
     const handleResize = () => {
       if (containerRef.current) {
         setDimensions({
           width: containerRef.current.offsetWidth,
-          height: 400,
+          height: 420,
         });
       }
     };
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const connectedNodeIds = useMemo(() => {
@@ -163,8 +180,8 @@ export default function SynergyGraph({ nodes, triples, synergies, autoReset = fa
     if (hoverNode && hoverNode.group === 4) {
       ids.add(hoverNode.id);
       graphData.links.forEach((l: any) => {
-        const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
-        const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+        const sourceId = typeof l.source === "object" ? l.source.id : l.source;
+        const targetId = typeof l.target === "object" ? l.target.id : l.target;
         if (sourceId === hoverNode.id) ids.add(targetId);
         if (targetId === hoverNode.id) ids.add(sourceId);
       });
@@ -173,104 +190,193 @@ export default function SynergyGraph({ nodes, triples, synergies, autoReset = fa
   }, [hoverNode, graphData.links]);
 
   return (
-    <div style={{ position: 'relative' }}>
-      <div ref={containerRef} className="glass-card" style={{ padding: 0, overflow: 'hidden', height: '400px', marginBottom: 'var(--space-2xl)' }}>
-        {typeof window !== 'undefined' && graphData.nodes.length > 0 && (
+    <div style={{ position: "relative" }}>
+      {/* Visual Legend */}
+      <div
+        style={{
+          display: "flex",
+          gap: "12px",
+          alignItems: "center",
+          marginBottom: "8px",
+          fontSize: "0.75rem",
+          color: "var(--text-secondary)",
+        }}
+      >
+        <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#3b82f6", display: "inline-block" }}></span>
+          Person (人物)
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#a855f7", display: "inline-block" }}></span>
+          Organization (組織)
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#10b981", display: "inline-block" }}></span>
+          Project / Concept (テーマ)
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }}></span>
+          Hermes Reason (推論ノード)
+        </span>
+      </div>
+
+      <div
+        ref={containerRef}
+        className="glass-card"
+        style={{ padding: 0, overflow: "hidden", height: "420px", marginBottom: "var(--space-2xl)" }}
+      >
+        {typeof window !== "undefined" && graphData.nodes.length > 0 && (
           <ForceGraph2D
             width={dimensions.width}
             height={dimensions.height}
             graphData={graphData}
             nodeLabel="label"
             nodeAutoColorBy="group"
-            linkColor={(link: any) => link.type === 'synergy' ? 'rgba(16, 185, 129, 0.5)' : 'rgba(255,255,255,0.2)'}
-            linkWidth={link => link.type === 'synergy' ? (link as any).value * 3 : 1}
-            linkDirectionalParticles={(link: any) => link.type === 'synergy' ? 4 : (link.isNew ? 2 : 0)}
-            linkDirectionalParticleSpeed={(link: any) => link.type === 'synergy' ? (link.value * 0.01) : 0.005}
+            linkColor={(link: any) =>
+              link.type === "synergy" ? "rgba(16, 185, 129, 0.6)" : "rgba(255,255,255,0.25)"
+            }
+            linkWidth={(link: any) => (link.type === "synergy" ? (link.value || 1) * 3 : 1.2)}
+            linkDirectionalParticles={(link: any) =>
+              link.type === "synergy" ? 4 : link.isNew && discoveryAnimationEnabled && !prefersReducedMotion ? 3 : 0
+            }
+            linkDirectionalParticleSpeed={(link: any) => (link.type === "synergy" ? (link.value || 0.5) * 0.01 : 0.008)}
+            linkDirectionalParticleWidth={2}
             nodeRelSize={6}
-            nodeVal={node => (node as any).group === 4 ? 4 : 6} // Make reason nodes slightly smaller
-            onNodeHover={node => setHoverNode(node || null)}
-            // Custom node rendering for glow effect on new nodes
+            nodeVal={(node: any) => (node.group === 4 ? 4 : 6)}
+            onNodeHover={(node) => setHoverNode(node || null)}
+            // Custom node rendering for birth animation, sparkles, and ripple effect
             // @ts-ignore
-            nodeCanvasObject={(node, ctx, globalScale) => {
+            nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
               const label = node.label || "";
               const fontSize = 12 / globalScale;
               ctx.font = `${fontSize}px Sans-Serif`;
-              
-              // Draw node circle
-              const nodeRadius = node.group === 4 ? 4 : 6;
-              const color = node.color || "#999";
-              
-              // Animation for new nodes (glow effect pulsing for 10 seconds)
-              if (node.isNew && node.createdAt) {
-                const age = Date.now() - node.createdAt;
-                if (age < 10000) {
-                  const pulse = Math.sin(age / 200) * 0.5 + 0.5; // 0 to 1
-                  ctx.beginPath();
-                  ctx.arc(node.x as number, node.y as number, nodeRadius + (pulse * 6), 0, 2 * Math.PI, false);
-                  ctx.fillStyle = `rgba(16, 185, 129, ${0.4 * (1 - pulse)})`; // Emerald green glow
-                  ctx.fill();
+
+              const baseRadius = node.group === 4 ? 4 : 6;
+              const color =
+                node.group === 1
+                  ? "#3b82f6"
+                  : node.group === 2
+                  ? "#a855f7"
+                  : node.group === 3
+                  ? "#10b981"
+                  : "#f59e0b";
+
+              const now = Date.now();
+              const age = now - (node.createdAt || now);
+              const animateDiscovery = discoveryAnimationEnabled && !prefersReducedMotion && node.isNew && age < 8000;
+
+              let currentRadius = baseRadius;
+
+              // Scale-up birth animation for first 400ms
+              if (animateDiscovery && age < 500) {
+                const progress = Math.min(age / 500, 1);
+                currentRadius = baseRadius * Math.sin((progress * Math.PI) / 2);
+              }
+
+              // Pulse ring ripple animation (expanding waves)
+              if (animateDiscovery) {
+                const ripple1 = (age % 1500) / 1500; // 0 to 1
+                const ripple2 = ((age + 750) % 1500) / 1500;
+
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, currentRadius + ripple1 * 16, 0, 2 * Math.PI, false);
+                ctx.strokeStyle = `rgba(16, 185, 129, ${0.5 * (1 - ripple1)})`;
+                ctx.lineWidth = 1.5 / globalScale;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, currentRadius + ripple2 * 16, 0, 2 * Math.PI, false);
+                ctx.strokeStyle = `rgba(59, 130, 246, ${0.4 * (1 - ripple2)})`;
+                ctx.lineWidth = 1.5 / globalScale;
+                ctx.stroke();
+
+                // Sparkle indicator for AI discovery
+                if (node.created_by_agent || node.group === 4) {
+                  ctx.fillStyle = "#fbbf24";
+                  ctx.font = `bold ${fontSize * 1.1}px Sans-Serif`;
+                  ctx.fillText("✨", node.x + currentRadius + 2, node.y - currentRadius - 2);
                 }
               }
 
+              // Draw node solid circle
               ctx.beginPath();
-              ctx.arc(node.x as number, node.y as number, nodeRadius, 0, 2 * Math.PI, false);
-              ctx.fillStyle = color as string;
+              ctx.arc(node.x, node.y, currentRadius, 0, 2 * Math.PI, false);
+              ctx.fillStyle = color;
               ctx.fill();
-              
-              // Draw text label below the node
-              if (globalScale > 1.5) {
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-                
-                // Handle multi-line labels (Reason Nodes)
+
+              // Draw labels
+              if (globalScale > 1.3) {
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+
                 if (node.group === 4) {
-                  // Only show reason text when hovered
                   if (hoverNode && hoverNode.id === node.id) {
-                    const lines = (label as string).split('\n');
-                    lines.forEach((line, i) => {
-                      ctx.fillText(line, node.x as number, (node.y as number) + nodeRadius + fontSize + (i * fontSize * 1.2));
+                    const lines = label.split("\n");
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+                    lines.forEach((line: string, i: number) => {
+                      ctx.fillText(line, node.x, node.y + currentRadius + fontSize + i * fontSize * 1.2);
                     });
                   }
                 } else {
-                  // Normal node labels
-                  const isHighlight = hoverNode && hoverNode.group === 4 && node.id !== undefined && connectedNodeIds.has(node.id);
+                  const isHighlight =
+                    hoverNode && hoverNode.group === 4 && node.id !== undefined && connectedNodeIds.has(node.id);
                   if (isHighlight) {
                     ctx.font = `bold ${fontSize * 1.2}px Sans-Serif`;
-                    ctx.fillStyle = 'rgba(255, 255, 0, 1)'; // Yellow highlight
+                    ctx.fillStyle = "rgba(255, 255, 0, 1)";
                   } else {
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
                   }
-                  ctx.fillText(label as string, node.x as number, (node.y as number) + nodeRadius + fontSize);
+                  ctx.fillText(label, node.x, node.y + currentRadius + fontSize);
                 }
               }
             }}
           />
         )}
         {graphData.nodes.length === 0 && (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-tertiary)' }}>
-            No data to display graph
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "100%",
+              color: "var(--text-tertiary)",
+            }}
+          >
+            グラフを表示するデータがありません
           </div>
         )}
       </div>
 
       {/* Tooltip for original context */}
       {hoverNode && hoverNode.context_body && (
-        <div style={{
-          position: 'absolute',
-          bottom: '10px',
-          left: '10px',
-          maxWidth: '300px',
-          background: 'rgba(0,0,0,0.8)',
-          color: '#fff',
-          padding: '10px',
-          borderRadius: '8px',
-          pointerEvents: 'none',
-          zIndex: 10,
-          fontSize: '0.875rem'
-        }}>
-          <strong>Context for {hoverNode.label}:</strong>
-          <p style={{ margin: '5px 0 0 0', whiteSpace: 'pre-wrap' }}>{hoverNode.context_body}</p>
+        <div
+          style={{
+            position: "absolute",
+            bottom: "10px",
+            left: "10px",
+            maxWidth: "340px",
+            background: "rgba(15, 23, 42, 0.9)",
+            border: "1px solid var(--border-color)",
+            color: "#fff",
+            padding: "12px",
+            borderRadius: "8px",
+            pointerEvents: "none",
+            zIndex: 10,
+            fontSize: "0.85rem",
+            backdropFilter: "blur(8px)",
+          }}
+        >
+          <div style={{ fontWeight: "bold", marginBottom: "4px", color: "#60a5fa" }}>
+            {hoverNode.label} ({hoverNode.type || "Entity"})
+          </div>
+          {hoverNode.info_date && (
+            <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", marginBottom: "4px" }}>
+              日時: {new Date(hoverNode.info_date).toLocaleDateString()}
+            </div>
+          )}
+          <p style={{ margin: "4px 0 0 0", whiteSpace: "pre-wrap", color: "var(--text-secondary)", fontSize: "0.8rem" }}>
+            {hoverNode.context_body}
+          </p>
         </div>
       )}
     </div>

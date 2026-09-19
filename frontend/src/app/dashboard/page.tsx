@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import SynergyGraph from "@/components/SynergyGraph";
+import HermesProposals from "@/components/HermesProposals";
 
 export default function DashboardOverview() {
   const [synergies, setSynergies] = useState<any[]>([]);
@@ -16,6 +17,9 @@ export default function DashboardOverview() {
   const [autoResetAnimation, setAutoResetAnimation] = useState<boolean>(
     typeof window !== "undefined" ? localStorage.getItem("autoResetAnimation") === "true" : false
   );
+  const [discoveryAnimationEnabled, setDiscoveryAnimationEnabled] = useState<boolean>(
+    typeof window !== "undefined" ? localStorage.getItem("discoveryAnimation") !== "false" : true
+  );
 
   const fetchDashboardData = async (isPolling = false) => {
     const token = localStorage.getItem("token");
@@ -25,8 +29,10 @@ export default function DashboardOverview() {
         const userRes = await fetch((process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + "/api/auth/me", {
           headers: { Authorization: `Bearer ${token}` }
         });
-        const userData = await userRes.json();
-        setUser(userData);
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          setUser(userData);
+        }
       }
 
       // Fetch synergies
@@ -44,9 +50,8 @@ export default function DashboardOverview() {
       });
       if (graphRes.ok) {
         const graphData = await graphRes.json();
-        setGraphNodes(graphData.nodes);
-        setGraphTriples(graphData.triples);
-        // Note: graphData.synergies is also returned but we can just use the synergies we fetched above, or use them together.
+        setGraphNodes(graphData.nodes || []);
+        setGraphTriples(graphData.triples || []);
       }
     } catch (err) {
       console.error(err);
@@ -93,7 +98,6 @@ export default function DashboardOverview() {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }
       });
-      // The polling mechanism will automatically fetch the new data as it is generated in the background
     } catch (err) {
       console.error(err);
       alert("Error starting analysis.");
@@ -121,15 +125,16 @@ export default function DashboardOverview() {
   if (loading) return <p>Loading dashboard...</p>;
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: '900px', margin: '0 auto' }}>
+    <div className="animate-fade-in" style={{ maxWidth: '960px', margin: '0 auto', paddingBottom: 'var(--space-2xl)' }}>
+      {/* Top Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-sm)' }}>
-        <h1 style={{ fontSize: '2rem', margin: 0 }}>Synergy Discovery</h1>
+        <h1 style={{ fontSize: '2rem', margin: 0 }}>Community Intelligence & Synergy</h1>
         
         {user?.role === 'owner' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-lg)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
               <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                Agent Exploration Interval: {delayMs}ms
+                Agent Interval: {delayMs}ms
               </label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <input 
@@ -141,53 +146,68 @@ export default function DashboardOverview() {
                     setDelayMs(val);
                     localStorage.setItem("agentDelayMs", val.toString());
                   }}
-                  style={{ width: '100px' }}
+                  style={{ width: '90px' }}
                 />
                 <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
                   <input
                     type="checkbox"
-                    checked={autoResetAnimation}
+                    checked={discoveryAnimationEnabled}
                     onChange={(e) => {
-                      setAutoResetAnimation(e.target.checked);
-                      localStorage.setItem("autoResetAnimation", e.target.checked.toString());
+                      setDiscoveryAnimationEnabled(e.target.checked);
+                      localStorage.setItem("discoveryAnimation", e.target.checked.toString());
                     }}
                   />
-                  Auto-Reset Anim
+                  発見アニメーション
                 </label>
               </div>
             </div>
             
             <button className="btn-primary" onClick={handleRunAnalysis} disabled={generating}>
-              {generating ? "Starting..." : "Run Analysis"}
+              {generating ? "Starting..." : "シナジー分析実行"}
             </button>
           </div>
         )}
       </div>
+
       <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-xl)' }}>
-        AI-detected potential collaborations and shared context between members.
+        自律型コミュニティAI「Hermes」によるグラフ維持・相乗効果（シナジー）とリソースプーリングの可視化。
       </p>
 
-      <h2 style={{ fontSize: '1.25rem', marginBottom: 'var(--space-md)' }}>Synergy Network Map</h2>
+      {/* Hermes Proposal Review Queue */}
+      <HermesProposals onProposalReviewed={() => fetchDashboardData()} />
+
+      {/* Synergy & Entity Network Map */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-sm)' }}>
+        <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Knowledge & Synergy Network Map</h2>
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
+          Nodes: {graphNodes.length} | Triples: {graphTriples.length} | Synergies: {synergies.length}
+        </span>
+      </div>
+
       <SynergyGraph 
         nodes={graphNodes} 
         triples={graphTriples} 
         synergies={synergies} 
         autoReset={autoResetAnimation}
+        discoveryAnimationEnabled={discoveryAnimationEnabled}
+        currentUserId={user?.id}
       />
 
+      {/* Discovered Synergies list */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
         <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Discovered Synergies</h2>
         <button 
           onClick={handleClearSynergies}
           style={{ 
-            padding: '8px 16px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--error)', 
+            padding: '6px 14px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--error)', 
             border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 'var(--radius-md)',
-            fontSize: '0.875rem', fontWeight: 'bold'
+            fontSize: '0.85rem', fontWeight: 'bold'
           }}
         >
           Clear All
         </button>
       </div>
+
       {synergies.length === 0 ? (
         <div className="glass-card" style={{ textAlign: 'center', padding: 'var(--space-2xl) var(--space-xl)' }}>
           <p style={{ color: 'var(--text-tertiary)' }}>No synergies detected yet.</p>

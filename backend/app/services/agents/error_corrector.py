@@ -1,34 +1,29 @@
 import json
+import logging
 from typing import List, Dict, Any
 from app.models.entity import Entity
 from app.services.agents.base import BaseAgent
-from google import genai
-from app.core.config import get_settings
+from app.services.llm import call_llm
+
+logger = logging.getLogger(__name__)
 
 class ErrorCorrectorAgent(BaseAgent):
     agent_type = "error_corrector"
     
     def gather_targets(self) -> List[Any]:
-        # Gather all active entities
+        # Gather all active entities (not already merged)
         entities = self.db.query(Entity).filter(Entity.merged_into_id == None).all()
-        # Group by community (we'll just pass all for MVP if it's small, or group them)
-        return [entities] # target is a list of all entities
+        if not entities:
+            return []
+        return [entities] # Pass list of entities as single batch
         
     def analyze(self, target: List[Entity]) -> List[Dict[str, Any]]:
         if len(target) < 2:
             return []
             
-        settings = get_settings()
-        api_key = settings.gemini_api_key
-        if not api_key or api_key == "your-gemini-api-key-here":
-            return []
+        entity_list = [{"id": e.id, "name": e.name, "type": e.type or "Concept"} for e in target]
+        logger.info(f"ErrorCorrector analyzing {len(entity_list)} entities for variants/duplicates...")
             
-        # We only pass names and IDs to the LLM
-        entity_list = [{"id": e.id, "name": e.name, "type": e.entity_type} for e in target]
-        
-        print(f"ErrorCorrector analyzing {len(entity_list)} entities for variants...")
-            
-        client = genai.Client(api_key=api_key)
         prompt = f"""
         Analyze the following list of entities and find any obvious duplicates or name variants.
         Examples of variants:
@@ -41,7 +36,7 @@ class ErrorCorrectorAgent(BaseAgent):
         Each object must have:
         - "source_id": The ID of the entity that should be merged (usually the less formal or abbreviated one).
         - "target_id": The ID of the canonical entity it should be merged INTO.
-        - "reason": A short explanation of why they are the same.
+        - "reason": A short explanation in Japanese of why they are the same.
         
         If no duplicates are found, return exactly "[]".
         
@@ -50,12 +45,10 @@ class ErrorCorrectorAgent(BaseAgent):
         """
         
         try:
-            model_name = settings.gemini_model or "gemini-2.5-flash"
-            response = client.models.generate_content(
-                model=model_name,
-                contents=[prompt],
-            )
-            result = response.text.strip()
+            result = call_llm(prompt)
+            if not result:
+                return []
+            result = result.strip()
             if result.startswith("```json"):
                 result = result[7:]
             if result.endswith("```"):
@@ -72,20 +65,19 @@ class ErrorCorrectorAgent(BaseAgent):
                         src_entity = next((e for e in target if e.id == src_id), None)
                         tgt_entity = next((e for e in target if e.id == tgt_id), None)
                         if src_entity and tgt_entity:
+                            affects_person = src_entity.id if src_entity.type == "Person" else None
                             proposals.append({
                                 "proposal_type": "fix_entity",
                                 "target_entity_id": src_id,
-                                "current_value": json.dumps({"name": src_entity.name, "entity_type": src_entity.entity_type}),
+                                "affects_person_id": affects_person,
+                                "current_value": json.dumps({"name": src_entity.name, "entity_type": src_entity.type}),
                                 "proposed_value": json.dumps({"action": "merge_into", "canonical_entity_id": tgt_id, "canonical_name": tgt_entity.name}),
-                                "reasoning": p.get("reason", "同一エンティティと推定されるため"),
-                                "confidence": 0.8
+                                "reasoning": p.get("reason", f"「{src_entity.name}」は「{tgt_entity.name}」の別名・表記揺れと推定されます。"),
+                                "evidence_urls": "[]",
+                                "confidence": 0.85
                             })
                 return proposals
         except Exception as e:
-            print(f"Error in ErrorCorrector LLM call: {e}")
+            logger.error(f"Error in ErrorCorrector LLM call: {e}")
             
         return []
-
-    def _apply_proposal(self, proposal):
-        # Error Corrector proposals are NOT auto-applied. They require human review.
-        pass

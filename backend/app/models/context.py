@@ -13,5 +13,12 @@ class Context(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    # Hermes fields
+    info_date = Column(DateTime(timezone=True), nullable=True)
+    info_date_source = Column(String(50), nullable=True) # 'explicit', 'inferred', 'post_date', 'unknown'
+    revision = Column(Integer, default=1)
+    source_agent = Column(String(50), nullable=True)
+    resource_url = Column(String(512), nullable=True)
+
     owner = relationship("User")
     record = relationship("Record")
