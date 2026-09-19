@@ -16,8 +16,12 @@ class ContextUpdate(BaseModel):
 class ContextResponse(ContextBase):
     id: int
     owner_id: int
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    info_date: Optional[datetime] = None
+    info_date_source: Optional[str] = None
+    source_agent: Optional[str] = None
+    resource_url: Optional[str] = None
 
     class Config:
         from_attributes = True
