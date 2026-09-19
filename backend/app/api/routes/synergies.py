@@ -11,6 +11,7 @@ from app.models.entity import Entity
 from app.models.synergy import SynergyCandidate
 from app.schemas.synergy import SynergyCandidateResponse, SynergyReview
 from app.services.llm import calculate_synergy_score
+from app.services.synergy_helpers import build_graph_adjacency, is_valid_synergy_candidate
 
 router = APIRouter()
 
@@ -43,27 +44,35 @@ import time
 def generate_synergies_task(delay_ms: int = 0):
     db = SessionLocal()
     try:
-        entities = db.query(Entity).all()
+        # Only active entities (exclude merged duplicates)
+        entities = db.query(Entity).filter(Entity.merged_into_id == None).all()
+        adj, canonical_map, entity_dict = build_graph_adjacency(db)
         
         threshold = 0.7
         for i in range(len(entities)):
             for j in range(i + 1, len(entities)):
+                ent_a = entities[i]
+                ent_b = entities[j]
+                
+                # Exclude already connected pairs (Person <-> Project, direct triples, etc.)
+                if not is_valid_synergy_candidate(ent_a, ent_b, adj, canonical_map, entity_dict):
+                    continue
                 
                 # Check if pair already evaluated
                 existing = db.query(SynergyCandidate).filter(
-                    ((SynergyCandidate.entity_a_id == entities[i].id) & (SynergyCandidate.entity_b_id == entities[j].id)) |
-                    ((SynergyCandidate.entity_a_id == entities[j].id) & (SynergyCandidate.entity_b_id == entities[i].id))
+                    ((SynergyCandidate.entity_a_id == ent_a.id) & (SynergyCandidate.entity_b_id == ent_b.id)) |
+                    ((SynergyCandidate.entity_a_id == ent_b.id) & (SynergyCandidate.entity_b_id == ent_a.id))
                 ).first()
                 if existing:
                     continue
                     
-                text_a = f"{entities[i].name} (Type: {entities[i].type})"
-                text_b = f"{entities[j].name} (Type: {entities[j].type})"
+                text_a = f"{ent_a.name} (Type: {ent_a.type})"
+                text_b = f"{ent_b.name} (Type: {ent_b.type})"
                 result = calculate_synergy_score(text_a, text_b, "")
                 if result["score"] >= threshold:
                     synergy = SynergyCandidate(
-                        entity_a_id=entities[i].id,
-                        entity_b_id=entities[j].id,
+                        entity_a_id=ent_a.id,
+                        entity_b_id=ent_b.id,
                         score=result["score"],
                         agent_type=result["agent_type"],
                         reason=result["reason"]

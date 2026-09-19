@@ -6,6 +6,7 @@ from app.models.context import Context
 from app.models.triple import Triple
 from app.services.agents.base import BaseAgent
 from app.services.llm import call_llm
+from app.services.synergy_helpers import build_graph_adjacency, is_valid_synergy_candidate
 
 logger = logging.getLogger(__name__)
 
@@ -23,12 +24,18 @@ class PoolingAgent(BaseAgent):
         if len(target) < 2:
             return []
 
+        adj, canonical_map, entity_dict = build_graph_adjacency(self.db)
         entity_list = [{"id": e.id, "name": e.name, "type": e.type or "Concept"} for e in target]
         logger.info(f"PoolingAgent analyzing {len(entity_list)} entities for resource & synergy pooling...")
 
         prompt = f"""
         You are the Hermes Pooling Engine.
         Your role is to discover complementary skills, shared problem areas, or resource pooling opportunities between members and projects.
+        
+        CRITICAL RULES:
+        1. Do NOT suggest a match between a Person and a Project/Organization if they are ALREADY connected or belong to each other.
+        2. Do NOT suggest matches between entities that already have an established relationship or link in the graph.
+        3. Only suggest matches that discover NEW, unestablished collaboration opportunities.
         
         Analyze the following entities:
         {json.dumps(entity_list, ensure_ascii=False)}
@@ -64,6 +71,11 @@ class PoolingAgent(BaseAgent):
                     ent_a = next((e for e in target if e.id == a_id), None)
                     ent_b = next((e for e in target if e.id == b_id), None)
                     if ent_a and ent_b:
+                        # Exclude already connected Person-Project nodes and invalid pairs
+                        if not is_valid_synergy_candidate(ent_a, ent_b, adj, canonical_map, entity_dict):
+                            logger.info(f"Skipping pooling match between already connected/invalid pair: {ent_a.name} <-> {ent_b.name}")
+                            continue
+
                         theme = m.get("pool_theme", "協業・プーリング候補")
                         reason = m.get("reason", "補完的な強みとシナジーが期待されるため")
                         affects_person = ent_a.id if ent_a.type == "Person" else (ent_b.id if ent_b.type == "Person" else None)
