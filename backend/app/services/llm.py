@@ -1,5 +1,7 @@
 import google.generativeai as genai
 import json
+import time
+from functools import wraps
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -15,6 +17,27 @@ generation_config = {
   "response_mime_type": "application/json",
 }
 
+def retry_with_backoff(max_retries=5, initial_delay=2, backoff_factor=2):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            delay = initial_delay
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    error_msg = str(e)
+                    if "503" in error_msg or "429" in error_msg or "ServiceUnavailable" in error_msg:
+                        if attempt < max_retries - 1:
+                            print(f"API Retry (attempt {attempt+1}/{max_retries}) due to error: {error_msg}. Waiting {delay}s...")
+                            time.sleep(delay)
+                            delay *= backoff_factor
+                            continue
+                    raise e
+        return wrapper
+    return decorator
+
+@retry_with_backoff(max_retries=5, initial_delay=3, backoff_factor=2)
 def extract_tags(text: str) -> list[str]:
     """Extract keywords and themes from a post/memo."""
     if not settings.gemini_api_key:
@@ -33,16 +56,13 @@ def extract_tags(text: str) -> list[str]:
     {text}
     """
     
-    try:
-        response = model.generate_content(prompt)
-        tags = json.loads(response.text)
-        if isinstance(tags, list):
-            return [str(t) for t in tags]
-        return []
-    except Exception as e:
-        print(f"Error extracting tags: {e}")
-        return []
+    response = model.generate_content(prompt)
+    tags = json.loads(response.text)
+    if isinstance(tags, list):
+        return [str(t) for t in tags]
+    return []
 
+@retry_with_backoff(max_retries=5, initial_delay=3, backoff_factor=2)
 def call_llm(prompt: str) -> str:
     """Generic function to call the LLM with a given prompt."""
     if not settings.gemini_api_key:
@@ -53,13 +73,10 @@ def call_llm(prompt: str) -> str:
         generation_config=generation_config,
     )
     
-    try:
-        response = model.generate_content(prompt)
-        return response.text
-    except Exception as e:
-        print(f"Error in call_llm: {e}")
-        return ""
+    response = model.generate_content(prompt)
+    return response.text
 
+@retry_with_backoff(max_retries=5, initial_delay=3, backoff_factor=2)
 def calculate_synergy_score(text_a: str, text_b: str, context: str = "") -> dict:
     """Calculate the synergy score between two texts using Gemini."""
     if not settings.gemini_api_key:
@@ -92,14 +109,10 @@ def calculate_synergy_score(text_a: str, text_b: str, context: str = "") -> dict
     Text B: {text_b}
     """
     
-    try:
-        response = model.generate_content(prompt)
-        data = json.loads(response.text)
-        return {
-            "score": float(data.get("score", 0.0)),
-            "agent_type": str(data.get("agent_type", "AI Evaluator")),
-            "reason": str(data.get("reason", "No reason provided."))
-        }
-    except Exception as e:
-        print(f"Error calculating synergy: {e}")
-        return {"score": 0.0, "agent_type": "Error", "reason": str(e)}
+    response = model.generate_content(prompt)
+    data = json.loads(response.text)
+    return {
+        "score": float(data.get("score", 0.0)),
+        "agent_type": str(data.get("agent_type", "AI Evaluator")),
+        "reason": str(data.get("reason", "No reason provided."))
+    }
