@@ -234,7 +234,7 @@ export default function SynergyGraph({ nodes, triples, synergies, autoReset = fa
                   }
                 } else {
                   // Normal node labels
-                  const isHighlight = hoverNode && hoverNode.group === 4 && connectedNodeIds.has(node.id);
+                  const isHighlight = hoverNode && hoverNode.group === 4 && node.id !== undefined && connectedNodeIds.has(node.id);
                   if (isHighlight) {
                     ctx.font = `bold ${fontSize * 1.2}px Sans-Serif`;
                     ctx.fillStyle = 'rgba(255, 255, 0, 1)'; // Yellow highlight

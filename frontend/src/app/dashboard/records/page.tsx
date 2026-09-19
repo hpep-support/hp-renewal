@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 
 interface Record {
-  id: int;
+  id: number;
   body: string;
-  disclosure_level: int;
+  disclosure_level: number;
   created_at: string;
   tags: string[] | null;
 }
